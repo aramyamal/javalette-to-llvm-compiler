@@ -24,5 +24,8 @@ go.work.sum
 # ignore generated files
 gen/*
 
+# ignore build directory
+bin/*
+
 # ignore jar files
 *.jar
