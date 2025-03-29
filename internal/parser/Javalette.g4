@@ -18,15 +18,14 @@ arg
 
 // statements can be the following
 stm
-    : exp ';'                           # ExpStm
-    | type Ident (',' item)* ';'        # DeclsStm
-    | 'return' exp ';'                  # ReturnStm
-    | 'return' ';'                      # VoidReturnStm
-    | 'while' '(' exp ')' stm           # WhileStm
-    | '{' stm* '}'                      # BlockStm
-    | 'if' '(' exp ')' stm              # IfStm
-    | 'if' '(' exp ')' stm 'else' stm   # IfElseStm
-    | ';'                               # BlankStm
+    : exp ';'                                   # ExpStm
+    | type Ident ('=' exp)? (',' item)* ';'     # DeclsStm
+    | 'return' exp ';'                          # ReturnStm
+    | 'return' ';'                              # VoidReturnStm
+    | 'while' '(' exp ')' stm                   # WhileStm
+    | '{' stm* '}'                              # BlockStm
+    | 'if' '(' exp ')' stm ('else' stm)?        # IfStm
+    | ';'                                       # BlankStm
     ;
 
 item
@@ -40,9 +39,11 @@ exp
     | boolLit                           # BoolExp
     | Integer                           # IntExp
     | Double                            # DoubleExp
-    | String                            # StringExp
     | Ident                             # IdentExp
     | Ident '(' (exp (',' exp)*)? ')'   # FuncExp
+    | String                            # StringExp
+    | '-' exp                           # NegExp
+    | '!' exp                           # NotExp
     | Ident incDecOp                    # PostExp
     | incDecOp Ident                    # PreExp
     | exp mulOp exp                     # MulExp
@@ -72,6 +73,7 @@ incDecOp
 mulOp
     : '*'                               #Mul
     | '/'                               #Div
+    | '%'                               #Mod
     ;
 
 addOp
@@ -92,12 +94,11 @@ cmpOp
 Ident: Letter (Letter | Digit | '_')*;
 Integer: Digit+;
 Double: Digit+ '.' Digit+ | Digit+ ('.' Digit+)? ('e' | 'E') ('+' | '-')? Digit+;
-String: '"' StringCharacter* '"';
+
+String: '"' (~["\\] | '\\' .)* '"';
 
 fragment Letter: [a-zA-Z];
 fragment Digit: [0-9];
-fragment StringCharacter: ~["\\\r\n] | EscapeSequence;
-fragment EscapeSequence: '\\' [btnfr"'\\];
 
 // skip whitespace and comments
 WS: [ \t\r\n]+ -> skip;
