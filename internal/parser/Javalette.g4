@@ -19,12 +19,19 @@ arg
 // statements can be the following
 stm
     : exp ';'                           # ExpStm
-    | type Ident (',' Ident)* ';'       # DeclsStm
-    | type Ident '=' exp ';'            # InitStm
+    | type Ident (',' item)* ';'        # DeclsStm
     | 'return' exp ';'                  # ReturnStm
+    | 'return' ';'                      # VoidReturnStm
     | 'while' '(' exp ')' stm           # WhileStm
     | '{' stm* '}'                      # BlockStm
+    | 'if' '(' exp ')' stm              # IfStm
     | 'if' '(' exp ')' stm 'else' stm   # IfElseStm
+    | ';'                               # BlankStm
+    ;
+
+item
+    : Ident                             # NoInitItem
+    | Ident '=' exp                     # InitItem
     ;
 
 // expressions can be the following
@@ -33,6 +40,7 @@ exp
     | boolLit                           # BoolExp
     | Integer                           # IntExp
     | Double                            # DoubleExp
+    | String                            # StringExp
     | Ident                             # IdentExp
     | Ident '(' (exp (',' exp)*)? ')'   # FuncExp
     | Ident incDecOp                    # PostExp
@@ -45,7 +53,7 @@ exp
     | <assoc=right> Ident '=' exp       # AssignExp
     ;
 
-boolType: 'bool';
+boolType: 'boolean';
 intType: 'int';
 doubleType: 'double';
 voidType: 'void';
@@ -84,9 +92,12 @@ cmpOp
 Ident: Letter (Letter | Digit | '_')*;
 Integer: Digit+;
 Double: Digit+ '.' Digit+ | Digit+ ('.' Digit+)? ('e' | 'E') ('+' | '-')? Digit+;
+String: '"' StringCharacter* '"';
 
 fragment Letter: [a-zA-Z];
 fragment Digit: [0-9];
+fragment StringCharacter: ~["\\\r\n] | EscapeSequence;
+fragment EscapeSequence: '\\' [btnfr"'\\];
 
 // skip whitespace and comments
 WS: [ \t\r\n]+ -> skip;
