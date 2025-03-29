@@ -1,5 +1,7 @@
 .PHONY: all clean build generate
 
+all: generate build
+
 generate:
 	@go generate ./...
 
@@ -9,4 +11,3 @@ build:
 clean:
 	@bash scripts/clean.sh
 
-all: generate build
