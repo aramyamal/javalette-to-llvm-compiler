@@ -10,6 +10,22 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parsing"
 )
 
+// custom error listener
+type errorListener struct {
+	*antlr.DefaultErrorListener
+}
+
+   func (e *errorListener) SyntaxError(
+	recognizer antlr.Recognizer,
+	offendingSymbol any,
+	line int,
+	column int,
+	msg string,
+	err antlr.RecognitionException) {
+	// stop program, print ERROR to stderr and return status code 1
+	log.Fatalln("ERROR")
+}
+
 func main() {
 	isStdinput := true
 	var stream antlr.CharStream
@@ -22,19 +38,23 @@ func main() {
 		}
 		isStdinput = false
 	} else {
-		stdinput, err := io.ReadAll(os.Stdin)
+		input, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatal("Error processing standard input:", err)
 		}
-		stream = antlr.NewInputStream(string(stdinput))
+		stream = antlr.NewInputStream(string(input))
 	}
 
 	lexer := parsing.NewJavaletteLexer(stream)
 	tokens := antlr.NewCommonTokenStream(lexer, 0)
 	p := parsing.NewJavaletteParser(tokens)
-	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
+
+	// add custom error listener
+	p.AddErrorListener(&errorListener{})
+
 	tree := p.Program()
 
-	// temporary, checking if it works
+	// temporary, checking if parsing works
+	fmt.Fprintln(os.Stderr, "OK")
 	fmt.Println(isStdinput, tree.ToStringTree(nil, p))
 }
