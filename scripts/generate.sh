@@ -8,7 +8,7 @@ SCRIPT_DIR=$(dirname "$(realpath $0)")
 ANTLR_JAR="antlr-4.13.2-complete.jar"
 ANTLR_JAR_DIR="$SCRIPT_DIR/../tools/"
 ANTLR_JAR_PATH="$ANTLR_JAR_DIR$ANTLR_JAR"
-GEN_DIR="$SCRIPT_DIR/../gen/parsing/"
+GEN_DIR="$SCRIPT_DIR/../gen/parser/"
 
 mkdir -p "$ANTLR_JAR_DIR"
 mkdir -p "$GEN_DIR"
@@ -21,6 +21,6 @@ else
 fi
 
 echo "Generating parser code with antlr4 from grammar file to gen/..."
-java -Xmx500M -cp "$ANTLR_JAR_PATH:$CLASSPATH" org.antlr.v4.Tool -Dlanguage=Go -no-visitor -package parsing *.g4 -o "$GEN_DIR"
+java -Xmx500M -cp "$ANTLR_JAR_PATH:$CLASSPATH" org.antlr.v4.Tool -Dlanguage=Go -no-visitor -package parser *.g4 -o "$GEN_DIR"
 
 echo "Finished generating parser code"

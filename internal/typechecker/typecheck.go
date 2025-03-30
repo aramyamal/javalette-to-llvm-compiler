@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	"github.com/antlr4-go/antlr/v4"
-	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parsing"
+	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
 )
 
-func Typecheck(tree parsing.IPrgmContext) (*typedast.Prgm, error) {
-	prgm, ok := tree.(*parsing.PrgmContext)
+func Typecheck(tree parser.IPrgmContext) (*typedast.Prgm, error) {
+	prgm, ok := tree.(*parser.PrgmContext)
 	if !ok {
-		return nil, fmt.Errorf("expected *parsing.ProgramContext, got %T", tree)
+		return nil, fmt.Errorf("expected *parser.ProgramContext, got %T", tree)
 	}
 
 	env := NewEnvironment[typedast.Type]()
@@ -31,11 +31,11 @@ func Typecheck(tree parsing.IPrgmContext) (*typedast.Prgm, error) {
 
 func checkDef(
 	env *Environment[typedast.Type],
-	def parsing.IDefContext,
+	def parser.IDefContext,
 ) (typedast.Def, error) {
 	line, col, text := extractData(def)
 	switch d := def.(type) {
-	case *parsing.FuncDefContext:
+	case *parser.FuncDefContext:
 		// TODO:
 		// handle Ident by adding to func. context,
 		// handle args by adding to environment,
@@ -64,11 +64,11 @@ func checkDef(
 
 func checkStm(
 	env *Environment[typedast.Type],
-	stm parsing.IStmContext,
+	stm parser.IStmContext,
 ) (typedast.Stm, error) {
 	line, col, text := extractData(stm)
 	switch s := stm.(type) {
-	case *parsing.ExpStmContext:
+	case *parser.ExpStmContext:
 		inferredExp, err := inferExp(env, s.Exp())
 		if err != nil {
 			return nil, err
@@ -85,11 +85,11 @@ func checkStm(
 
 func inferExp(
 	env *Environment[typedast.Type],
-	exp parsing.IExpContext,
+	exp parser.IExpContext,
 ) (typedast.Exp, error) {
 	line, col, text := extractData(exp)
 	switch e := exp.(type) {
-	case *parsing.ParenExpContext:
+	case *parser.ParenExpContext:
 		innerExp, err := inferExp(env, e.Exp())
 		if err != nil {
 			return nil, err

@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/antlr4-go/antlr/v4"
-	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parsing"
+	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typechecker"
 )
 
@@ -44,9 +44,9 @@ func main() {
 		stream = antlr.NewInputStream(string(input))
 	}
 
-	lexer := parsing.NewJavaletteLexer(stream)
+	lexer := parser.NewJavaletteLexer(stream)
 	tokens := antlr.NewCommonTokenStream(lexer, 0)
-	p := parsing.NewJavaletteParser(tokens)
+	p := parser.NewJavaletteParser(tokens)
 
 	// add custom error listener
 	p.AddErrorListener(&errorListener{})
@@ -59,6 +59,6 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	// temporary, checking if parsing works
+	// temporary, checking if parser works
 	fmt.Fprintln(os.Stderr, "OK")
 }
