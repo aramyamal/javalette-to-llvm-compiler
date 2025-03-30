@@ -23,8 +23,8 @@ func (e *errorListener) SyntaxError(
 	column int,
 	msg string,
 	err antlr.RecognitionException) {
-	// stop program, print ERROR to stderr, and return status code 1
-	log.Fatalln("ERROR")
+	// print ERROR to stderr, and return status code 1
+	fmt.Fprintln(os.Stderr, "ERROR")
 }
 
 func main() {
@@ -53,7 +53,11 @@ func main() {
 
 	tree := p.Prgm()
 
-	typechecker.Typecheck(tree)
+	_, err := typechecker.Typecheck(tree)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR")
+		log.Fatalln(err)
+	}
 
 	// temporary, checking if parsing works
 	fmt.Fprintln(os.Stderr, "OK")
