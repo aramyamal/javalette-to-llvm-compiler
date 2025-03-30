@@ -8,6 +8,7 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parsing"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typechecker"
 )
 
 // custom error listener
@@ -15,19 +16,18 @@ type errorListener struct {
 	*antlr.DefaultErrorListener
 }
 
-   func (e *errorListener) SyntaxError(
+func (e *errorListener) SyntaxError(
 	recognizer antlr.Recognizer,
 	offendingSymbol any,
 	line int,
 	column int,
 	msg string,
 	err antlr.RecognitionException) {
-	// stop program, print ERROR to stderr and return status code 1
+	// stop program, print ERROR to stderr, and return status code 1
 	log.Fatalln("ERROR")
 }
 
 func main() {
-	isStdinput := true
 	var stream antlr.CharStream
 	if len(os.Args) > 1 {
 		filepath := os.Args[1]
@@ -36,7 +36,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error reading file %v: %v", filepath, err)
 		}
-		isStdinput = false
 	} else {
 		input, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -52,9 +51,10 @@ func main() {
 	// add custom error listener
 	p.AddErrorListener(&errorListener{})
 
-	tree := p.Program()
+	tree := p.Prgm()
+
+	typechecker.Typecheck(tree)
 
 	// temporary, checking if parsing works
 	fmt.Fprintln(os.Stderr, "OK")
-	fmt.Println(isStdinput, tree.ToStringTree(nil, p))
 }

@@ -2,24 +2,24 @@ grammar Javalette;
 
 // PARSER RULES
 // a program is a list of definitions
-program
+prgm
     : def* 
     ;
 
 // definitions have type, identifier, arguments and statements
 def 
-    : type Ident '(' (arg (',' arg)*)? ')' '{' stm* '}'
+    : type Ident '(' (arg (',' arg)*)? ')' '{' stm* '}' # FuncDef
     ;
 
 // an argument is a type and identifier
 arg
-    : type Ident
+    : type Ident                                # ParamArg
     ;
 
 // statements can be the following
 stm
     : exp ';'                                   # ExpStm
-    | type Ident ('=' exp)? (',' item)* ';'     # DeclsStm
+    | type item (',' item)* ';'                 # DeclsStm
     | 'return' exp ';'                          # ReturnStm
     | 'return' ';'                              # VoidReturnStm
     | 'while' '(' exp ')' stm                   # WhileStm
