@@ -6,13 +6,13 @@ type Prgm struct {
 }
 
 func (*Prgm) Line() int    { return 0 }
-func (*Prgm) Col() int  { return 0 }
+func (*Prgm) Col() int     { return 0 }
 func (*Prgm) Text() string { return "" }
 
 func NewPrgm(
 	defs []Def,
-) Prgm {
-	return Prgm{
+) *Prgm {
+	return &Prgm{
 		defs: defs,
 	}
 }

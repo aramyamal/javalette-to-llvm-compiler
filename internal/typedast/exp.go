@@ -24,13 +24,13 @@ type ParenExp struct {
 }
 
 func NewParenExp(
-	typ Type,
 	exp Exp,
+	typ Type,
 	line int,
 	col int,
 	text string,
-) ParenExp {
-	return ParenExp{
+) *ParenExp {
+	return &ParenExp{
 		Exp: exp,
 		BaseExp: BaseExp{
 			typ:  typ,

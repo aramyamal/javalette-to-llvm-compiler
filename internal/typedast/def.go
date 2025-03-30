@@ -6,10 +6,10 @@ type Def interface {
 }
 
 type FuncDef struct {
-	typ  Type
 	Id   string
 	Args []Arg
 	Stms []Stm
+	typ  Type
 
 	line int
 	col  int
@@ -23,15 +23,15 @@ func (f FuncDef) Text() string { return f.text }
 func (*FuncDef) defNode()      {}
 
 func NewFuncDef(
-	typ Type,
 	id string,
 	args []Arg,
 	stms []Stm,
+	typ Type,
 	line int,
 	col int,
 	text string,
-) FuncDef {
-	return FuncDef{
+) *FuncDef {
+	return &FuncDef{
 		typ:  typ,
 		Id:   id,
 		Args: args,

@@ -28,8 +28,8 @@ func NewExpStm(
 	line int,
 	col int,
 	text string,
-) ExpStm {
-	return ExpStm{
+) *ExpStm {
+	return &ExpStm{
 		Exp: exp,
 		BaseStm: BaseStm{
 			line: line,
