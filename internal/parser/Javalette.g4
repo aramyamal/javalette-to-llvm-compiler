@@ -57,8 +57,9 @@ exp
 boolType: 'boolean';
 intType: 'int';
 doubleType: 'double';
+stringType: 'type';
 voidType: 'void';
-type: boolType | intType | doubleType | voidType;
+type: boolType | intType | doubleType | stringType | voidType ;
 
 boolLit
     : 'true'                            #TrueLit

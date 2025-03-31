@@ -8,6 +8,7 @@ const (
 	Bool
 	String
 	Void
+	Unknown
 )
 
 func (t Type) String() string {
@@ -17,5 +18,6 @@ func (t Type) String() string {
 		"Bool",
 		"String",
 		"Void",
+		"Unknown",
 	}[t]
 }

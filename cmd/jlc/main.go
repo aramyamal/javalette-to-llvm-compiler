@@ -47,7 +47,6 @@ func main() {
 	lexer := parser.NewJavaletteLexer(stream)
 	tokens := antlr.NewCommonTokenStream(lexer, 0)
 	p := parser.NewJavaletteParser(tokens)
-
 	// add custom error listener
 	p.AddErrorListener(&errorListener{})
 

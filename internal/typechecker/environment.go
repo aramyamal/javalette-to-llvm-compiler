@@ -1,10 +1,18 @@
 package typechecker
 
+import "fmt"
+
 type Context[T any] map[string]T
 
+type Signature[T any] struct {
+	params  map[string]T
+	returns T
+}
+
 type Environment[T any] struct {
-	contexts        []Context[T]
-	currentFuncName string
+	contexts    []Context[T]
+	signatures  map[string]Signature[T]
+	currentFunc string
 }
 
 func (e *Environment[T]) PushContext() {
@@ -24,9 +32,22 @@ func (e *Environment[T]) PopContext() (Context[T], bool) {
 	return ctx, true
 }
 
+func (e *Environment[T]) ExtendFunc(
+	funcName string,
+	params map[string]T,
+	returns T,
+) error {
+	if _, ok := e.signatures[funcName]; ok {
+		return fmt.Errorf("redefinition of '%s'", funcName)
+	}
+	e.signatures[funcName] = Signature[T]{params: params, returns: returns}
+	return nil
+}
+
 func NewEnvironment[T any]() *Environment[T] {
 	environment := Environment[T]{
-		contexts: make([]Context[T], 0),
+		contexts:   make([]Context[T], 0),
+		signatures: make(map[string]Signature[T]),
 	}
 	return &environment
 }
