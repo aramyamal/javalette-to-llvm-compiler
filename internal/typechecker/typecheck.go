@@ -3,7 +3,6 @@ package typechecker
 import (
 	"fmt"
 
-	"github.com/antlr4-go/antlr/v4"
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
 )
@@ -84,49 +83,9 @@ func validateFuncSigns(
 	return nil
 }
 
-func extractParams(
-	args []parser.IArgContext,
-) (map[string]typedast.Type, error) {
-
-	params := make(map[string]typedast.Type)
-	for _, arg := range args {
-
-		switch a := arg.(type) {
-		case *parser.ParamArgContext:
-			paramName := a.Ident().GetText()
-			paramType, err := toAstType(a.Type_())
-			if err != nil {
-				return nil, err
-			}
-
-			if _, exists := params[paramName]; exists {
-				return nil, fmt.Errorf(
-					"duplicate function parameter name %s in function at %d:%d",
-					paramName,
-					arg.GetStart().GetLine(), arg.GetStart().GetColumn(),
-				)
-			}
-
-			if paramType == typedast.Void {
-				return nil, fmt.Errorf(
-					"function defintion parameter %s of type void at %d:%d",
-					paramName,
-					arg.GetStart().GetLine(), arg.GetStart().GetColumn(),
-				)
-			}
-
-			params[paramName] = paramType
-
-		default:
-			return nil, fmt.Errorf(
-				"unexpected argument type %T encountered at %d:%d",
-				arg,
-				arg.GetStart().GetLine(), arg.GetStart().GetColumn(),
-			)
-
-		}
-	}
-	return params, nil
+func extractParams(args []parser.IArgContext) (map[string]typedast.Type, error) {
+	_, params, err := extractArgs(args) // Ignore typedArgs slice
+	return params, err
 }
 
 func checkDefs(
@@ -155,6 +114,7 @@ func checkDef(
 		// TODO:
 		// handle Ident by adding to func. context,
 		// handle args by adding to environment,
+
 		var typedStms []typedast.Stm
 		for _, stm := range d.AllStm() {
 			typedStm, err := checkStm(env, stm)
@@ -163,11 +123,19 @@ func checkDef(
 			}
 			typedStms = append(typedStms, typedStm)
 		}
+		typ, err := toAstType(d.Type_())
+		if err != nil {
+			return nil, err
+		}
+		typedArgs, err := toAstArgs(d.AllArg())
+		if err != nil {
+			return nil, err
+		}
 		return typedast.NewFuncDef(
 			d.Ident().GetText(),
-			[]typedast.Arg{}, // fix this
+			typedArgs,
 			typedStms,
-			0, // fix this, supposed to be Type enum calculated from d._Type()
+			typ,
 			line, col, text,
 		), nil
 	default:
@@ -176,6 +144,11 @@ func checkDef(
 			d, line, col, text,
 		)
 	}
+}
+
+func toAstArgs(args []parser.IArgContext) ([]typedast.Arg, error) {
+	typedArgs, _, err := extractArgs(args)
+	return typedArgs, err
 }
 
 func checkStm(
@@ -220,29 +193,49 @@ func inferExp(
 	}
 }
 
-func extractPosData(pr antlr.ParserRuleContext) (int, int, string) {
-	return pr.GetStart().GetLine(), pr.GetStart().GetColumn(), pr.GetText()
-}
+func extractArgs(
+	args []parser.IArgContext,
+) ([]typedast.Arg, map[string]typedast.Type, error) {
 
-func toAstType(fromType parser.ITypeContext) (typedast.Type, error) {
-	parserChild := fromType.GetChild(0)
-	switch parserChild.(type) {
-	case *parser.IntTypeContext:
-		return typedast.Int, nil
-	case *parser.DoubleTypeContext:
-		return typedast.Double, nil
-	case *parser.BoolTypeContext:
-		return typedast.Bool, nil
-	case *parser.StringTypeContext:
-		return typedast.String, nil
-	case *parser.VoidTypeContext:
-		return typedast.Void, nil
-	default:
-		return typedast.Unknown, fmt.Errorf(
-			"type '%T' not yet implemented at %d:%d near '%s'",
-			parserChild,
-			fromType.GetStart().GetLine(),
-			fromType.GetStart().GetColumn(),
-		)
+	typedArgs := []typedast.Arg{}
+	params := make(map[string]typedast.Type)
+
+	for _, arg := range args {
+		line, col, text := extractPosData(arg)
+
+		switch a := arg.(type) {
+		case *parser.ParamArgContext:
+			paramName := a.Ident().GetText()
+			paramType, err := toAstType(a.Type_())
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if _, exists := params[paramName]; exists {
+				return nil, nil, fmt.Errorf(
+					"duplicate function parameter name %s in function at %d:%d",
+					paramName, line, col,
+				)
+			}
+
+			if paramType == typedast.Void {
+				return nil, nil, fmt.Errorf(
+					"function definition parameter %s of type void at %d:%d",
+					paramName, line, col,
+				)
+			}
+
+			params[paramName] = paramType
+			typedArgs = append(typedArgs, typedast.NewParamArg(
+				paramType, paramName, line, col, text,
+			))
+
+		default:
+			return nil, nil, fmt.Errorf(
+				"unexpected argument type %T encountered at %d:%d",
+				arg, line, col,
+			)
+		}
 	}
+	return typedArgs, params, nil
 }
