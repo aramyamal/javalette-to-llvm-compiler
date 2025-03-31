@@ -34,18 +34,31 @@ func checkDef(
 		// handle Ident by adding to func. context,
 		// handle args by adding to environment,
 
+		hasReturn := false
 		var typedStms []typedast.Stm
 		for _, stm := range d.AllStm() {
 			typedStm, err := checkStm(env, stm)
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := typedStm.(*typedast.ReturnStm); ok {
+				hasReturn = true
+			}
 			typedStms = append(typedStms, typedStm)
 		}
+
 		typ, err := toAstType(d.Type_())
 		if err != nil {
 			return nil, err
 		}
+
+		if typ != typedast.Void && !hasReturn {
+			return nil, fmt.Errorf(
+				"function '%s' at %d:%d does not have a return",
+				text, line, col,
+			)
+		}
+
 		typedArgs, err := toAstArgs(d.AllArg())
 		if err != nil {
 			return nil, err
