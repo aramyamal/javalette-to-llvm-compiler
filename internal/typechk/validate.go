@@ -1,10 +1,10 @@
-package typechecker
+package typechk
 
 import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
 func validateMainFunc(defs []parser.IDefContext) error {
@@ -24,7 +24,7 @@ func validateMainFunc(defs []parser.IDefContext) error {
 
 	if typ, err := toAstType(mainFunc.Type_()); err != nil {
 		return err
-	} else if typ != typedast.Int {
+	} else if typ != tast.Int {
 		return fmt.Errorf("'main' entrypoint function does not have type int")
 	}
 
@@ -34,7 +34,7 @@ func validateMainFunc(defs []parser.IDefContext) error {
 }
 
 func validateFuncSigns(
-	env *Environment[typedast.Type],
+	env *Environment[tast.Type],
 	defs []parser.IDefContext,
 ) error {
 	for _, def := range defs {

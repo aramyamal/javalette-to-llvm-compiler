@@ -1,4 +1,4 @@
-package typedast
+package tast
 
 type Exp interface {
 	TypedNode

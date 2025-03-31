@@ -8,7 +8,7 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typechecker"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typechk"
 )
 
 // custom error listener
@@ -52,7 +52,7 @@ func main() {
 
 	tree := p.Prgm()
 
-	_, err := typechecker.Typecheck(tree)
+	_, err := typechk.Typecheck(tree)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR")
 		log.Fatalln(err)

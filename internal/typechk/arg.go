@@ -1,28 +1,28 @@
-package typechecker
+package typechk
 
 import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
-func extractParams(args []parser.IArgContext) (map[string]typedast.Type, error) {
+func extractParams(args []parser.IArgContext) (map[string]tast.Type, error) {
 	_, params, err := extractArgs(args) // Ignore typedArgs slice
 	return params, err
 }
 
-func toAstArgs(args []parser.IArgContext) ([]typedast.Arg, error) {
+func toAstArgs(args []parser.IArgContext) ([]tast.Arg, error) {
 	typedArgs, _, err := extractArgs(args)
 	return typedArgs, err
 }
 
 func extractArgs(
 	args []parser.IArgContext,
-) ([]typedast.Arg, map[string]typedast.Type, error) {
+) ([]tast.Arg, map[string]tast.Type, error) {
 
-	typedArgs := []typedast.Arg{}
-	params := make(map[string]typedast.Type)
+	typedArgs := []tast.Arg{}
+	params := make(map[string]tast.Type)
 
 	for _, arg := range args {
 		line, col, text := extractPosData(arg)
@@ -42,7 +42,7 @@ func extractArgs(
 				)
 			}
 
-			if paramType == typedast.Void {
+			if paramType == tast.Void {
 				return nil, nil, fmt.Errorf(
 					"function definition parameter %s of type void at %d:%d",
 					paramName, line, col,
@@ -50,7 +50,7 @@ func extractArgs(
 			}
 
 			params[paramName] = paramType
-			typedArgs = append(typedArgs, typedast.NewParamArg(
+			typedArgs = append(typedArgs, tast.NewParamArg(
 				paramType, paramName, line, col, text,
 			))
 

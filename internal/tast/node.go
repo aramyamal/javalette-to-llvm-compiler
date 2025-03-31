@@ -1,4 +1,4 @@
-package typedast
+package tast
 
 type Node interface {
 	Line() int

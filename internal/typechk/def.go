@@ -1,18 +1,18 @@
-package typechecker
+package typechk
 
 import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
 func checkDefs(
-	env *Environment[typedast.Type],
+	env *Environment[tast.Type],
 	defs []parser.IDefContext,
-) ([]typedast.Def, error) {
+) ([]tast.Def, error) {
 
-	var typedDefs []typedast.Def
+	var typedDefs []tast.Def
 	for _, def := range defs {
 		typedDef, err := checkDef(env, def)
 		if err != nil {
@@ -24,9 +24,9 @@ func checkDefs(
 }
 
 func checkDef(
-	env *Environment[typedast.Type],
+	env *Environment[tast.Type],
 	def parser.IDefContext,
-) (typedast.Def, error) {
+) (tast.Def, error) {
 	line, col, text := extractPosData(def)
 	switch d := def.(type) {
 	case *parser.FuncDefContext:
@@ -35,13 +35,13 @@ func checkDef(
 		// handle args by adding to environment,
 
 		hasReturn := false
-		var typedStms []typedast.Stm
+		var typedStms []tast.Stm
 		for _, stm := range d.AllStm() {
 			typedStm, err := checkStm(env, stm)
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := typedStm.(*typedast.ReturnStm); ok {
+			if _, ok := typedStm.(*tast.ReturnStm); ok {
 				hasReturn = true
 			}
 			typedStms = append(typedStms, typedStm)
@@ -52,7 +52,7 @@ func checkDef(
 			return nil, err
 		}
 
-		if typ != typedast.Void && !hasReturn {
+		if typ != tast.Void && !hasReturn {
 			return nil, fmt.Errorf(
 				"function '%s' at %d:%d does not have a return",
 				text, line, col,
@@ -63,7 +63,7 @@ func checkDef(
 		if err != nil {
 			return nil, err
 		}
-		return typedast.NewFuncDef(
+		return tast.NewFuncDef(
 			d.Ident().GetText(),
 			typedArgs,
 			typedStms,

@@ -1,16 +1,16 @@
-package typechecker
+package typechk
 
 import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
 func checkStm(
-	env *Environment[typedast.Type],
+	env *Environment[tast.Type],
 	stm parser.IStmContext,
-) (typedast.Stm, error) {
+) (tast.Stm, error) {
 	line, col, text := extractPosData(stm)
 	switch s := stm.(type) {
 	case *parser.ExpStmContext:
@@ -18,7 +18,7 @@ func checkStm(
 		if err != nil {
 			return nil, err
 		}
-		return typedast.NewExpStm(inferredExp, line, col, text), nil
+		return tast.NewExpStm(inferredExp, line, col, text), nil
 
 	default:
 		return nil, fmt.Errorf(

@@ -1,16 +1,16 @@
-package typechecker
+package typechk
 
 import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typedast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
 func inferExp(
-	env *Environment[typedast.Type],
+	env *Environment[tast.Type],
 	exp parser.IExpContext,
-) (typedast.Exp, error) {
+) (tast.Exp, error) {
 	line, col, text := extractPosData(exp)
 	switch e := exp.(type) {
 	case *parser.ParenExpContext:
@@ -18,7 +18,7 @@ func inferExp(
 		if err != nil {
 			return nil, err
 		}
-		return typedast.NewParenExp(innerExp, innerExp.Type(), line, col, text),
+		return tast.NewParenExp(innerExp, innerExp.Type(), line, col, text),
 			nil
 	default:
 		return nil, fmt.Errorf(
