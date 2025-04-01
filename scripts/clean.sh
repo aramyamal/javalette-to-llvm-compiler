@@ -12,7 +12,7 @@ echo "Removing bin/"
 rm -rf ./bin 
 echo "Removing gen/"
 rm -rf ./gen
-echo "Removing antlr4 jar from tools/"
-rm -rf ./tools/
+# echo "Removing antlr4 jar from tools/"
+# rm -rf ./tools/
 
 echo "Cleanup completed"
