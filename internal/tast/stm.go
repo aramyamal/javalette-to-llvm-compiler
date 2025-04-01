@@ -41,14 +41,12 @@ type DeclsStm struct {
 func (*DeclsStm) stmNode() {}
 
 func NewDeclsStm(
-	typ Type,
 	items []Item,
 	line int,
 	col int,
 	text string,
 ) *DeclsStm {
 	return &DeclsStm{
-		Type:     typ,
 		Items:    items,
 		BaseNode: BaseNode{line: line, col: col, text: text},
 	}

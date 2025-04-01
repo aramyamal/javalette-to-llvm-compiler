@@ -7,48 +7,6 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
-func checkStm(
-	env *Environment[tast.Type],
-	stm parser.IStmContext,
-) (tast.Stm, error) {
-	line, col, text := extractPosData(stm)
-	switch s := stm.(type) {
-	case *parser.ExpStmContext:
-		inferredExp, err := inferExp(env, s.Exp())
-		if err != nil {
-			return nil, err
-		}
-		return tast.NewExpStm(inferredExp, line, col, text), nil
-
-	case *parser.DeclsStmContext:
-		typ, err := toAstType(s.Type_())
-		if err != nil {
-			return nil, err
-		}
-		if typ == tast.Void {
-			return nil, fmt.Errorf(
-				"variable declaration of type void at %d:%d near '%s'",
-				line, col, text,
-			)
-		}
-		items := []tast.Item{}
-		for _, item := range s.AllItem() {
-			typedItem, err := checkItem(env, typ, item)
-			if err != nil {
-				return nil, err
-			}
-			items = append(items, typedItem)
-		}
-		return tast.NewDeclsStm(items, line, col, text), nil
-
-	default:
-		return nil, fmt.Errorf(
-			"checkStm: unhandled stm type %T at %d:%d near '%s'",
-			s, line, col, text,
-		)
-	}
-}
-
 func checkItem(
 	env *Environment[tast.Type],
 	typ tast.Type,

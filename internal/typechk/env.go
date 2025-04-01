@@ -4,6 +4,11 @@ import "fmt"
 
 type Context[T any] map[string]T
 
+func (c Context[T]) Has(key string) bool {
+	_, ok := c[key]
+	return ok
+}
+
 type Signature[T any] struct {
 	params  map[string]T
 	returns T
@@ -42,6 +47,13 @@ func (e *Environment[T]) ExtendFunc(
 	}
 	e.signatures[funcName] = Signature[T]{params: params, returns: returns}
 	return nil
+}
+
+func (e *Environment[T]) Peek() (*Context[T], bool) {
+	if len(e.contexts) == 0 {
+		return nil, false
+	}
+	return &e.contexts[len(e.contexts)-1], true
 }
 
 func NewEnvironment[T any]() *Environment[T] {
