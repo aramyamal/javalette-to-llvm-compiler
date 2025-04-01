@@ -9,18 +9,11 @@ type FuncDef struct {
 	Id   string
 	Args []Arg
 	Stms []Stm
-	typ  Type
 
-	line int
-	col  int
-	text string
+	BaseTypedNode
 }
 
-func (f FuncDef) Type() Type   { return f.typ }
-func (f FuncDef) Line() int    { return f.line }
-func (f FuncDef) Col() int     { return f.col }
-func (f FuncDef) Text() string { return f.text }
-func (*FuncDef) defNode()      {}
+func (*FuncDef) defNode() {}
 
 func NewFuncDef(
 	id string,
@@ -32,14 +25,13 @@ func NewFuncDef(
 	text string,
 ) *FuncDef {
 	return &FuncDef{
-		typ:  typ,
 		Id:   id,
 		Args: args,
 		Stms: stms,
-
-		line: line,
-		col:  col,
-		text: text,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
 	}
 }
 

@@ -5,23 +5,13 @@ type Exp interface {
 	expNode()
 }
 
-type BaseExp struct {
-	typ  Type
-	line int
-	col  int
-	text string
-}
-
-func (e BaseExp) Type() Type   { return e.typ }
-func (e BaseExp) Line() int    { return e.line }
-func (e BaseExp) Col() int     { return e.col }
-func (e BaseExp) Text() string { return e.text }
-func (*BaseExp) expNode()      {}
-
 type ParenExp struct {
 	Exp Exp
-	BaseExp
+
+	BaseTypedNode
 }
+
+func (*ParenExp) expNode() {}
 
 func NewParenExp(
 	exp Exp,
@@ -32,11 +22,9 @@ func NewParenExp(
 ) *ParenExp {
 	return &ParenExp{
 		Exp: exp,
-		BaseExp: BaseExp{
-			typ:  typ,
-			line: line,
-			col:  col,
-			text: text,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
 		},
 	}
 }

@@ -12,7 +12,5 @@ func (*Prgm) Text() string { return "" }
 func NewPrgm(
 	defs []Def,
 ) *Prgm {
-	return &Prgm{
-		defs: defs,
-	}
+	return &Prgm{defs: defs}
 }

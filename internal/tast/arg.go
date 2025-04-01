@@ -6,19 +6,12 @@ type Arg interface {
 }
 
 type ParamArg struct {
-	typ Type
-	Id  string
+	Id string
 
-	line int
-	col  int
-	text string
+	BaseTypedNode
 }
 
-func (a ParamArg) Type() Type   { return a.typ }
-func (a ParamArg) Line() int    { return a.line }
-func (a ParamArg) Col() int     { return a.col }
-func (a ParamArg) Text() string { return a.text }
-func (*ParamArg) argNode()      {}
+func (*ParamArg) argNode() {}
 
 func NewParamArg(
 	typ Type,
@@ -28,12 +21,11 @@ func NewParamArg(
 	text string,
 ) *ParamArg {
 	return &ParamArg{
-		typ: typ,
-		Id:  id,
-
-		line: line,
-		col:  col,
-		text: text,
+		Id: id,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
 	}
 }
 
