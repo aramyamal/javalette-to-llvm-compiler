@@ -14,11 +14,18 @@ func checkStm(
 	line, col, text := extractPosData(stm)
 	switch s := stm.(type) {
 	case *parser.ExpStmContext:
-		inferredExp, err := inferExp(env, s.Exp())
+		typedExp, err := inferExp(env, s.Exp())
 		if err != nil {
 			return nil, err
 		}
-		return tast.NewExpStm(inferredExp, line, col, text), nil
+
+		if !typedExp.HasSideEffect() {
+			return nil, fmt.Errorf(
+				"expression statement has no effect at %d:%d near '%s'",
+				line, col, text,
+			)
+		}
+		return tast.NewExpStm(typedExp, line, col, text), nil
 
 	case *parser.DeclsStmContext:
 		typ, err := toAstType(s.Type_())
@@ -74,7 +81,7 @@ func checkStm(
 		if err != nil {
 			return nil, err
 		}
-		if typedExp.Type() != tast.Void {
+		if typedExp.Type() != tast.Bool {
 			return nil, fmt.Errorf(
 				"expression in while-loop does not have type bool at %d:%d "+
 					"near '%s'",

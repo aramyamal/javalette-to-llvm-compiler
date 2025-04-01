@@ -25,6 +25,7 @@ func (e *errorListener) SyntaxError(
 	err antlr.RecognitionException) {
 	// print ERROR to stderr, and return status code 1
 	fmt.Fprintln(os.Stderr, "ERROR")
+	os.Exit(1)
 }
 
 func main() {
@@ -44,13 +45,18 @@ func main() {
 		stream = antlr.NewInputStream(string(input))
 	}
 
-	lexer := parser.NewJavaletteLexer(stream)
-	tokens := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJavaletteParser(tokens)
-	// add custom error listener
-	p.AddErrorListener(&errorListener{})
+	errorList := &errorListener{}
 
-	tree := p.Prgm()
+	lexer := parser.NewJavaletteLexer(stream)
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(errorList)
+
+	tokens := antlr.NewCommonTokenStream(lexer, 0)
+	pars := parser.NewJavaletteParser(tokens)
+	pars.RemoveErrorListeners()
+	pars.AddErrorListener(&errorListener{})
+
+	tree := pars.Prgm()
 
 	_, err := typechk.Typecheck(tree)
 	if err != nil {

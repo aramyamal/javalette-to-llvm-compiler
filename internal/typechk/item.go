@@ -54,11 +54,19 @@ func checkItem(
 
 		(*currentCtx)[varName] = typ
 
-		exp, err := inferExp(env, i.Exp())
+		typedExp, err := inferExp(env, i.Exp())
 		if err != nil {
 			return nil, err
 		}
-		return tast.NewInitItem(varName, exp, typ, line, col, text), nil
+
+		if !isConvertible(typ, typedExp.Type()) {
+			return nil, fmt.Errorf(
+				"cannot convert from %s to %s at %d:%d near '%s'",
+				typedExp.Type().String(), typ.String(), line, col, text,
+			)
+		}
+
+		return tast.NewInitItem(varName, typedExp, typ, line, col, text), nil
 
 	default:
 		return nil, fmt.Errorf(

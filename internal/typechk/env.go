@@ -94,6 +94,18 @@ func (e *Environment[T]) AddStdFunc(
 	)
 }
 
+func (e *Environment[T]) AddStdFuncNoParam(
+	funcName string,
+	returns T,
+) {
+	e.ExtendFunc(
+		funcName,
+		[]string{},
+		map[string]T{},
+		returns,
+	)
+}
+
 func (e *Environment[T]) ExtendFunc(
 	funcName string,
 	paramNames []string,

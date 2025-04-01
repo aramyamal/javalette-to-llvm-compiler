@@ -7,6 +7,7 @@ const (
 	OpDec
 	OpMul
 	OpDiv
+	OpMod
 	OpAdd
 	OpSub
 	OpLt
@@ -23,6 +24,7 @@ func (op Op) String() string {
 		"--", // Dec
 		"*",  // Mul
 		"/",  // Div
+		"*",  // Mod
 		"+",  // Add
 		"-",  // Sub
 		"<",  // Lt

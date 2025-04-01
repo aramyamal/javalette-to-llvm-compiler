@@ -5,6 +5,7 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"slices"
 )
 
 func checkDefs(
@@ -28,12 +29,27 @@ func checkDef(
 	env *Environment[tast.Type],
 	def parser.IDefContext,
 ) (tast.Def, error) {
+	env.EnterContext()
 	line, col, text := extractPosData(def)
 	switch d := def.(type) {
 	case *parser.FuncDefContext:
 		// TODO:
 		// handle Ident by adding to func. context,
-		// handle args by adding to environment,
+
+		_, params, err := extractParams(d.AllArg())
+		if err != nil {
+			return nil, err
+		}
+
+		for varName, typ := range params {
+			ok := env.ExtendVar(varName, typ)
+			if !ok {
+				return nil, fmt.Errorf(
+					"duplicate parameter name '%s' in function '%s' at %d:%d",
+					varName, d.Ident().GetText(), line, col,
+				)
+			}
+		}
 
 		typ, err := toAstType(d.Type_())
 		if err != nil {
@@ -41,18 +57,16 @@ func checkDef(
 		}
 		env.SetReturnType(typ)
 
-		hasReturn := false
 		var typedStms []tast.Stm
 		for _, stm := range d.AllStm() {
 			typedStm, err := checkStm(env, stm)
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := typedStm.(*tast.ReturnStm); ok {
-				hasReturn = true
-			}
 			typedStms = append(typedStms, typedStm)
 		}
+
+		hasReturn := slices.ContainsFunc(typedStms, guaranteesReturn)
 
 		if typ != tast.Void && !hasReturn {
 			return nil, fmt.Errorf(
@@ -65,6 +79,7 @@ func checkDef(
 		if err != nil {
 			return nil, err
 		}
+		env.ExitContext()
 		return tast.NewFuncDef(
 			d.Ident().GetText(),
 			typedArgs,

@@ -5,6 +5,7 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"slices"
 )
 
 func validateMainFunc(defs []parser.IDefContext) error {
@@ -22,13 +23,15 @@ func validateMainFunc(defs []parser.IDefContext) error {
 		return fmt.Errorf("program has no entrypoint 'main'")
 	}
 
+	if len(mainFunc.AllArg()) != 0 {
+		return fmt.Errorf("entrypoint 'main' may not have input variables")
+	}
+
 	if typ, err := toAstType(mainFunc.Type_()); err != nil {
 		return err
 	} else if typ != tast.Int {
 		return fmt.Errorf("'main' entrypoint function does not have type int")
 	}
-
-	// TODO add check that main does not have params
 
 	return nil
 }
@@ -59,4 +62,22 @@ func validateFuncSigns(
 		}
 	}
 	return nil
+}
+
+func guaranteesReturn(stm tast.Stm) bool {
+	switch s := stm.(type) {
+	case *tast.ReturnStm:
+		return true
+	case *tast.BlockStm:
+		// a block guarantees return if at least one statement guarantees return
+		return slices.ContainsFunc(s.Stms, guaranteesReturn)
+	case *tast.IfStm:
+		// if statement guarantees return only if both branches guarantee return
+		if s.ElseStm == nil {
+			return false // no else branch means no guarantee
+		}
+		return guaranteesReturn(s.ThenStm) && guaranteesReturn(s.ElseStm)
+	default:
+		return false
+	}
 }

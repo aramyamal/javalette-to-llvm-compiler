@@ -22,8 +22,8 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 	env.AddStdFunc("printInt", tast.Void, tast.Int)
 	env.AddStdFunc("printDouble", tast.Void, tast.Double)
 	env.AddStdFunc("printString", tast.Void, tast.String)
-	env.AddStdFunc("readInt", tast.Int, tast.Unknown)
-	env.AddStdFunc("readDouble", tast.Double, tast.Unknown)
+	env.AddStdFuncNoParam("readInt", tast.Int)
+	env.AddStdFuncNoParam("readDouble", tast.Double)
 
 	env.EnterContext()
 

@@ -31,6 +31,7 @@ func toAstType(fromType parser.ITypeContext) (tast.Type, error) {
 			parserChild,
 			fromType.GetStart().GetLine(),
 			fromType.GetStart().GetColumn(),
+			fromType.GetText(),
 		)
 	}
 }
@@ -40,13 +41,16 @@ func toAstType(fromType parser.ITypeContext) (tast.Type, error) {
 func isConvertible(expected, actual tast.Type) bool {
 	switch expected {
 	case tast.Double:
-		return actual == tast.Int || actual == tast.Double
+		//return actual == tast.Int || actual == tast.Double
+		return actual == tast.Double
 	case tast.Int:
 		return actual == tast.Int
 	case tast.Bool:
 		return actual == tast.Bool
 	case tast.Void:
 		return actual == tast.Void
+	case tast.String:
+		return actual == tast.String
 	default:
 		return false
 	}
@@ -56,8 +60,8 @@ func isConvertible(expected, actual tast.Type) bool {
 // int + double = double
 func dominantType(type1, type2 tast.Type) (tast.Type, error) {
 	// if either type is Double, the result is Double
+
 	if (type1 == tast.Double && type2 == tast.Int) ||
-		(type1 == tast.Int && type2 == tast.Double) ||
 		(type1 == tast.Double && type2 == tast.Double) {
 		return tast.Double, nil
 	}
@@ -65,7 +69,7 @@ func dominantType(type1, type2 tast.Type) (tast.Type, error) {
 	// same types return the same type
 	if type1 == type2 {
 		switch type1 {
-		case tast.Int, tast.Bool, tast.Void:
+		case tast.Int, tast.Bool, tast.Void, tast.Double:
 			return type1, nil
 		}
 	}
