@@ -34,3 +34,44 @@ func toAstType(fromType parser.ITypeContext) (tast.Type, error) {
 		)
 	}
 }
+
+// Checks if actual type can be converted to expected type. Returns true if the
+// conversion is valid.
+func isConvertible(expected, actual tast.Type) bool {
+	switch expected {
+	case tast.Double:
+		return actual == tast.Int || actual == tast.Double
+	case tast.Int:
+		return actual == tast.Int
+	case tast.Bool:
+		return actual == tast.Bool
+	case tast.Void:
+		return actual == tast.Void
+	default:
+		return false
+	}
+}
+
+// Determines the dominant type between two types for operations. For example,
+// int + double = double
+func dominantType(type1, type2 tast.Type) (tast.Type, error) {
+	// if either type is Double, the result is Double
+	if (type1 == tast.Double && type2 == tast.Int) ||
+		(type1 == tast.Int && type2 == tast.Double) ||
+		(type1 == tast.Double && type2 == tast.Double) {
+		return tast.Double, nil
+	}
+
+	// same types return the same type
+	if type1 == type2 {
+		switch type1 {
+		case tast.Int, tast.Bool, tast.Void:
+			return type1, nil
+		}
+	}
+
+	return tast.Unknown, fmt.Errorf(
+		"illegal implicit conversion between %v and %v",
+		type1, type2,
+	)
+}

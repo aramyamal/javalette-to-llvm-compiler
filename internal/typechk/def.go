@@ -19,6 +19,7 @@ func checkDefs(
 			return nil, err
 		}
 		typedDefs = append(typedDefs, typedDef)
+		env.SetReturnType(tast.Unknown)
 	}
 	return typedDefs, nil
 }
@@ -34,6 +35,12 @@ func checkDef(
 		// handle Ident by adding to func. context,
 		// handle args by adding to environment,
 
+		typ, err := toAstType(d.Type_())
+		if err != nil {
+			return nil, err
+		}
+		env.SetReturnType(typ)
+
 		hasReturn := false
 		var typedStms []tast.Stm
 		for _, stm := range d.AllStm() {
@@ -45,11 +52,6 @@ func checkDef(
 				hasReturn = true
 			}
 			typedStms = append(typedStms, typedStm)
-		}
-
-		typ, err := toAstType(d.Type_())
-		if err != nil {
-			return nil, err
 		}
 
 		if typ != tast.Void && !hasReturn {

@@ -18,6 +18,7 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 	}
 
 	env := NewEnvironment[tast.Type]()
+	env.EnterContext()
 
 	if err := validateFuncSigns(env, defs); err != nil {
 		return nil, err
@@ -27,6 +28,8 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	env.ExitContext()
 
 	typedPrgm := tast.NewPrgm(typedDefs)
 	return typedPrgm, nil

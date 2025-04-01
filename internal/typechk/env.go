@@ -1,6 +1,8 @@
 package typechk
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Context[T any] map[string]T
 
@@ -15,16 +17,24 @@ type Signature[T any] struct {
 }
 
 type Environment[T any] struct {
-	contexts    []Context[T]
-	signatures  map[string]Signature[T]
-	currentFunc string
+	contexts      []Context[T]
+	signatures    map[string]Signature[T]
+	currentReturn T
 }
 
-func (e *Environment[T]) PushContext() {
+func (e Environment[T]) ReturnType() T {
+	return e.currentReturn // possibly check for zero value
+}
+
+func (e *Environment[T]) SetReturnType(returnType T) {
+	e.currentReturn = returnType
+}
+
+func (e *Environment[T]) EnterContext() {
 	e.contexts = append(e.contexts, make(map[string]T))
 }
 
-func (e *Environment[T]) PopContext() (Context[T], bool) {
+func (e *Environment[T]) ExitContext() (Context[T], bool) {
 	ctxLen := len(e.contexts)
 
 	if len(e.contexts) == 0 {

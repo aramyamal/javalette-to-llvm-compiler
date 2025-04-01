@@ -31,3 +31,26 @@ func NewParenExp(
 
 // check that ParenExp implements Exp
 var _ Exp = (*ParenExp)(nil)
+
+type IntToDoubleExp struct {
+	Exp Exp
+
+	BaseTypedNode
+}
+
+func (*IntToDoubleExp) expNode() {}
+
+func NewIntToDoubleExp(
+	e Exp,
+) *IntToDoubleExp {
+	return &IntToDoubleExp{
+		Exp: e,
+		BaseTypedNode: BaseTypedNode{
+			typ:      Double,
+			BaseNode: BaseNode{line: e.Line(), col: e.Col(), text: e.Text()},
+		},
+	}
+}
+
+// check that IntToDoubleExp implements Exp
+var _ Exp = (*IntToDoubleExp)(nil)

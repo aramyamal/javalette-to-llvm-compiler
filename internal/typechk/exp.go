@@ -27,3 +27,10 @@ func inferExp(
 		)
 	}
 }
+
+func promoteExp(exp tast.Exp, typ tast.Type) tast.Exp {
+	if exp.Type() == tast.Int && typ == tast.Double {
+		return tast.NewIntToDoubleExp(exp)
+	}
+	return exp
+}
