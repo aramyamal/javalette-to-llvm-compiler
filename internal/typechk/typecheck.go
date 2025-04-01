@@ -18,6 +18,13 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 	}
 
 	env := NewEnvironment[tast.Type]()
+
+	env.AddStdFunc("printInt", tast.Void, tast.Int)
+	env.AddStdFunc("printDouble", tast.Void, tast.Double)
+	env.AddStdFunc("printString", tast.Void, tast.String)
+	env.AddStdFunc("readInt", tast.Int, tast.Unknown)
+	env.AddStdFunc("readDouble", tast.Double, tast.Unknown)
+
 	env.EnterContext()
 
 	if err := validateFuncSigns(env, defs); err != nil {

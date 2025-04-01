@@ -45,13 +45,16 @@ func validateFuncSigns(
 				return err
 			}
 
-			params, err := extractParams(funcDef.AllArg())
+			paramNames, params, err := extractParams(funcDef.AllArg())
 			if err != nil {
 				return err
 			}
 
-			if err := env.ExtendFunc(name, params, returnType); err != nil {
-				return err
+			if ok := env.ExtendFunc(name, paramNames, params, returnType); !ok {
+				return fmt.Errorf(
+					"redefinition of function '%s' at %d:%d",
+					name, def.GetStart().GetLine(), def.GetStart().GetColumn(),
+				)
 			}
 		}
 	}
