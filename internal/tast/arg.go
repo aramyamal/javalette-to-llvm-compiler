@@ -1,6 +1,6 @@
 package tast
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 
 type Arg interface {
 	TypedNode
@@ -16,7 +16,7 @@ type ParamArg struct {
 func (*ParamArg) argNode() {}
 
 func NewParamArg(
-	typ ir.Type,
+	typ types.Type,
 	id string,
 	line int,
 	col int,

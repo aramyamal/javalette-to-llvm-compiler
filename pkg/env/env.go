@@ -116,9 +116,9 @@ func (e *Environment[T]) ExtendFunc(
 		return false
 	}
 	e.signatures[funcName] = Signature[T]{
-		paramNames: paramNames,
-		params:     params,
-		returns:    returns,
+		ParamNames: paramNames,
+		Params:     params,
+		Returns:    returns,
 	}
 	return true
 }

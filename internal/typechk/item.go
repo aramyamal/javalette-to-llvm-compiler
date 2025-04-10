@@ -5,13 +5,11 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
-func checkItem(
-	env *env.Environment[ir.Type],
-	typ ir.Type,
+func (tc *TypeChecker) checkItem(
+	typ types.Type,
 	item parser.IItemContext,
 ) (tast.Item, error) {
 	line, col, text := extractPosData(item)
@@ -20,7 +18,7 @@ func checkItem(
 	case *parser.NoInitItemContext:
 		varName := i.Ident().GetText()
 
-		currentCtx, ok := env.Peek()
+		currentCtx, ok := tc.env.Peek()
 		if !ok {
 			return nil, fmt.Errorf(
 				"declaring variable outside of code blocks at %d:%d near '%s'",
@@ -40,7 +38,7 @@ func checkItem(
 	case *parser.InitItemContext:
 		varName := i.Ident().GetText()
 
-		currentCtx, ok := env.Peek()
+		currentCtx, ok := tc.env.Peek()
 		if !ok {
 			return nil, fmt.Errorf(
 				"declaring variable outside of code blocks at %d:%d near '%s'",
@@ -56,7 +54,7 @@ func checkItem(
 
 		(*currentCtx)[varName] = typ
 
-		typedExp, err := inferExp(env, i.Exp())
+		typedExp, err := tc.inferExp(i.Exp())
 		if err != nil {
 			return nil, err
 		}

@@ -1,6 +1,6 @@
 package tast
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+import types "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 
 type Node interface {
 	Line() int
@@ -21,12 +21,12 @@ func (n BaseNode) Text() string { return n.text }
 // typed node of typed ast
 type TypedNode interface {
 	Node
-	Type() ir.Type
+	Type() types.Type
 }
 
 type BaseTypedNode struct {
 	BaseNode
-	typ ir.Type
+	typ types.Type
 }
 
-func (n BaseTypedNode) Type() ir.Type { return n.typ }
+func (n BaseTypedNode) Type() types.Type { return n.typ }

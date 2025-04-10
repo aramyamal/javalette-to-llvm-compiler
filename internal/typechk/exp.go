@@ -6,18 +6,14 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
-func inferExp(
-	env *env.Environment[ir.Type],
-	exp parser.IExpContext,
-) (tast.Exp, error) {
+func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 	line, col, text := extractPosData(exp)
 	switch e := exp.(type) {
 	case *parser.ParenExpContext:
-		innerExp, err := inferExp(env, e.Exp())
+		innerExp, err := tc.inferExp(e.Exp())
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +53,7 @@ func inferExp(
 
 	case *parser.IdentExpContext:
 		varName := e.Ident().GetText()
-		typ, ok := env.LookupVar(varName)
+		typ, ok := tc.env.LookupVar(varName)
 		if !ok {
 			return nil, fmt.Errorf(
 				"trying to reference an undeclared variable '%s' at %d:%d",
@@ -70,33 +66,33 @@ func inferExp(
 		// check if func is defined before it is called and that call is correct
 		funcName := e.Ident().GetText()
 		// check if func signature in env
-		sign, exists := env.LookupFunc(funcName)
+		sign, exists := tc.env.LookupFunc(funcName)
 		if !exists {
 			return nil, fmt.Errorf(
 				"calling undefined function '%s' at %d:%d",
 				funcName, line, col,
 			)
 		}
-		types := []ir.Type{}
+		expTypes := []types.Type{}
 		typedExps := []tast.Exp{}
 
 		// extract types in correct order
-		paramTypes := make([]ir.Type, 0, len(sign.ParamNames))
+		paramTypes := make([]types.Type, 0, len(sign.ParamNames))
 		for _, paramName := range sign.ParamNames {
 			paramTypes = append(paramTypes, sign.Params[paramName])
 		}
 
 		for _, exp := range e.AllExp() {
-			typedExp, err := inferExp(env, exp)
+			typedExp, err := tc.inferExp(exp)
 			if err != nil {
 				return nil, err
 			}
-			types = append(types, typedExp.Type())
+			expTypes = append(expTypes, typedExp.Type())
 			typedExps = append(typedExps, typedExp)
 		}
 
 		// check if number of arguments matches function signature
-		if len(paramTypes) != len(types) && len(sign.Params) > 0 {
+		if len(paramTypes) != len(expTypes) && len(sign.Params) > 0 {
 			return nil, fmt.Errorf(
 				"function '%s' called with wrong number of arguments at %d:%d",
 				funcName, line, col,
@@ -106,7 +102,7 @@ func inferExp(
 		// verify and promote argument types
 		for i := range paramTypes {
 			expected := paramTypes[i]
-			actual := types[i]
+			actual := expTypes[i]
 
 			if !isConvertible(expected, actual) {
 				return nil, fmt.Errorf(
@@ -131,12 +127,12 @@ func inferExp(
 		return tast.NewStringExp(e.String_().GetText(), line, col, text), nil
 
 	case *parser.NegExpContext:
-		typedExp, err := inferExp(env, e.Exp())
+		typedExp, err := tc.inferExp(e.Exp())
 		if err != nil {
 			return nil, err
 		}
 		typ := typedExp.Type()
-		if !(typ == ir.Double || typ == ir.Int) {
+		if !(typ == types.Double || typ == types.Int) {
 			return nil, fmt.Errorf(
 				"negation not defined for type %s at %d:%d near '%s'",
 				typ.String(), line, col, text,
@@ -145,11 +141,11 @@ func inferExp(
 		return tast.NewNegExp(typedExp, typ, line, col, text), nil
 
 	case *parser.NotExpContext:
-		typedExp, err := inferExp(env, e.Exp())
+		typedExp, err := tc.inferExp(e.Exp())
 		if err != nil {
 			return nil, err
 		}
-		if typ := typedExp.Type(); typ != ir.Bool {
+		if typ := typedExp.Type(); typ != types.Bool {
 			return nil, fmt.Errorf(
 				"'!' not defined for type bool at %d:%d near '%s'",
 				line, col, text,
@@ -159,26 +155,26 @@ func inferExp(
 
 	case *parser.PostExpContext:
 		varName := e.Ident().GetText()
-		typ, ok := env.LookupVar(varName)
+		typ, ok := tc.env.LookupVar(varName)
 		if !ok {
 			return nil, fmt.Errorf(
 				"variable '%s' not found at %d:%d",
 				varName, line, col,
 			)
 		}
-		if typ != ir.Int { //&& typ != tast.Double {
+		if typ != types.Int { //&& typ != tast.Double {
 			return nil, fmt.Errorf(
 				"'++' or '--' operation can only be done on int or double at "+
 					"%d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		var op ir.Op
+		var op types.Op
 		switch e.IncDecOp().(type) {
 		case *parser.IncContext:
-			op = ir.OpInc
+			op = types.OpInc
 		case *parser.DecContext:
-			op = ir.OpDec
+			op = types.OpDec
 		default:
 			return nil, fmt.Errorf(
 				"unhandled postfix operator type %T at %d:%d",
@@ -189,26 +185,26 @@ func inferExp(
 
 	case *parser.PreExpContext:
 		varName := e.Ident().GetText()
-		typ, ok := env.LookupVar(varName)
+		typ, ok := tc.env.LookupVar(varName)
 		if !ok {
 			return nil, fmt.Errorf(
 				"variable '%s' not found at %d:%d",
 				varName, line, col,
 			)
 		}
-		if typ != ir.Int && typ != ir.Double {
+		if typ != types.Int && typ != types.Double {
 			return nil, fmt.Errorf(
 				"'++' or '--' operation can only be done on int or double at "+
 					"%d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		var op ir.Op
+		var op types.Op
 		switch e.IncDecOp().(type) {
 		case *parser.IncContext:
-			op = ir.OpInc
+			op = types.OpInc
 		case *parser.DecContext:
-			op = ir.OpDec
+			op = types.OpDec
 		default:
 			return nil, fmt.Errorf(
 				"unhandled prefix operator type %T at %d:%d",
@@ -218,26 +214,26 @@ func inferExp(
 		return tast.NewPostExp(varName, op, typ, line, col, text), nil
 
 	case *parser.MulExpContext:
-		leftExp, err := inferExp(env, e.Exp(0))
+		leftExp, err := tc.inferExp(e.Exp(0))
 		if err != nil {
 			return nil, err
 		}
 		leftType := leftExp.Type()
-		rightExp, err := inferExp(env, e.Exp(1))
+		rightExp, err := tc.inferExp(e.Exp(1))
 		if err != nil {
 			return nil, err
 		}
 		rightType := rightExp.Type()
 
-		var op ir.Op
+		var op types.Op
 		switch e.MulOp().(type) {
 		case *parser.MulContext:
-			op = ir.OpMul
+			op = types.OpMul
 		case *parser.DivContext:
-			op = ir.OpDiv
+			op = types.OpDiv
 		case *parser.ModContext:
-			op = ir.OpMod
-			if rightType == ir.Double || leftType == ir.Double {
+			op = types.OpMod
+			if rightType == types.Double || leftType == types.Double {
 				return nil, fmt.Errorf(
 					"%s-operation not allowed for bool at %d:%d near '%s'",
 					op.String(), line, col, text,
@@ -250,14 +246,14 @@ func inferExp(
 			)
 		}
 
-		if leftType == ir.Bool || rightType == ir.Bool {
+		if leftType == types.Bool || rightType == types.Bool {
 			return nil, fmt.Errorf(
 				"%s-operation not allowed for bool at %d:%d near '%s'",
 				op.String(), line, col, text,
 			)
 		}
 
-		if leftType == ir.Void || rightType == ir.Void {
+		if leftType == types.Void || rightType == types.Void {
 			return nil, fmt.Errorf(
 				"%s-operation not allowed for void at %d:%d near '%s'",
 				op.String(), line, col, text,
@@ -276,23 +272,23 @@ func inferExp(
 
 	case *parser.AddExpContext:
 
-		leftExp, err := inferExp(env, e.Exp(0))
+		leftExp, err := tc.inferExp(e.Exp(0))
 		if err != nil {
 			return nil, err
 		}
 		leftType := leftExp.Type()
-		rightExp, err := inferExp(env, e.Exp(1))
+		rightExp, err := tc.inferExp(e.Exp(1))
 		if err != nil {
 			return nil, err
 		}
 		rightType := rightExp.Type()
 
-		var op ir.Op
+		var op types.Op
 		switch e.AddOp().(type) {
 		case *parser.AddContext:
-			op = ir.OpAdd
+			op = types.OpAdd
 		case *parser.SubContext:
-			op = ir.OpSub
+			op = types.OpSub
 		default:
 			return nil, fmt.Errorf(
 				"unhandled operator type %T at %d:%d",
@@ -300,14 +296,14 @@ func inferExp(
 			)
 		}
 
-		if leftType == ir.Bool || rightType == ir.Bool {
+		if leftType == types.Bool || rightType == types.Bool {
 			return nil, fmt.Errorf(
 				"%s-operation not allowed for bool at %d:%d near '%s'",
 				op.String(), line, col, text,
 			)
 		}
 
-		if leftType == ir.Void || rightType == ir.Void {
+		if leftType == types.Void || rightType == types.Void {
 			return nil, fmt.Errorf(
 				"%s-operation not allowed for void at %d:%d near '%s'",
 				op.String(), line, col, text,
@@ -325,11 +321,11 @@ func inferExp(
 			op, typ, line, col, text), nil
 
 	case *parser.CmpExpContext:
-		leftExp, err := inferExp(env, e.Exp(0))
+		leftExp, err := tc.inferExp(e.Exp(0))
 		if err != nil {
 			return nil, err
 		}
-		rightExp, err := inferExp(env, e.Exp(1))
+		rightExp, err := tc.inferExp(e.Exp(1))
 		if err != nil {
 			return nil, err
 		}
@@ -337,65 +333,65 @@ func inferExp(
 		leftType := leftExp.Type()
 		rightType := rightExp.Type()
 
-		if leftType == ir.Void || rightType == ir.Void {
+		if leftType == types.Void || rightType == types.Void {
 			return nil, fmt.Errorf(
 				"comparison with void type not allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
 
-		var op ir.Op
+		var op types.Op
 		switch cmp := e.CmpOp().(type) {
 		case *parser.LThContext:
-			if leftType == ir.Bool || rightType == ir.Bool {
+			if leftType == types.Bool || rightType == types.Bool {
 				return nil, fmt.Errorf(
 					"number comparisons with bool not allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpLt
+			op = types.OpLt
 		case *parser.GThContext:
-			if leftType == ir.Bool || rightType == ir.Bool {
+			if leftType == types.Bool || rightType == types.Bool {
 				return nil, fmt.Errorf(
 					"number comparisons with bool not allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpGt
+			op = types.OpGt
 		case *parser.LTEContext:
-			if leftType == ir.Bool || rightType == ir.Bool {
+			if leftType == types.Bool || rightType == types.Bool {
 				return nil, fmt.Errorf(
 					"number comparisons with bool not allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpLt
+			op = types.OpLt
 		case *parser.GTEContext:
-			if leftType == ir.Bool || rightType == ir.Bool {
+			if leftType == types.Bool || rightType == types.Bool {
 				return nil, fmt.Errorf(
 					"number comparisons with bool not allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpGt
+			op = types.OpGt
 		case *parser.EquContext:
-			if (leftType == ir.Bool) != (rightType == ir.Bool) {
+			if (leftType == types.Bool) != (rightType == types.Bool) {
 				return nil, fmt.Errorf(
 					"equality comparison between bool and non-bool types not"+
 						" allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpEq
+			op = types.OpEq
 		case *parser.NEqContext:
-			if (leftType == ir.Bool) != (rightType == ir.Bool) {
+			if (leftType == types.Bool) != (rightType == types.Bool) {
 				return nil, fmt.Errorf(
 					"inequality comparison between bool and non-bool types not"+
 						" allowed at %d:%d near '%s'",
 					line, col, text,
 				)
 			}
-			op = ir.OpNe
+			op = types.OpNe
 		default:
 			return nil, fmt.Errorf(
 				"unhandled comparison operator type %T at %d:%d",
@@ -417,16 +413,16 @@ func inferExp(
 		), nil
 
 	case *parser.AndExpContext:
-		leftExp, err := inferExp(env, e.Exp(0))
+		leftExp, err := tc.inferExp(e.Exp(0))
 		if err != nil {
 			return nil, err
 		}
-		rightExp, err := inferExp(env, e.Exp(1))
+		rightExp, err := tc.inferExp(e.Exp(1))
 		if err != nil {
 			return nil, err
 		}
 
-		if leftExp.Type() != ir.Bool || rightExp.Type() != ir.Bool {
+		if leftExp.Type() != types.Bool || rightExp.Type() != types.Bool {
 			return nil, fmt.Errorf(
 				"AND (&&) operation can only occur between booleans at %d:%d "+
 					"near '%s'",
@@ -437,16 +433,16 @@ func inferExp(
 		return tast.NewAndExp(leftExp, rightExp, line, col, text), nil
 
 	case *parser.OrExpContext:
-		leftExp, err := inferExp(env, e.Exp(0))
+		leftExp, err := tc.inferExp(e.Exp(0))
 		if err != nil {
 			return nil, err
 		}
-		rightExp, err := inferExp(env, e.Exp(1))
+		rightExp, err := tc.inferExp(e.Exp(1))
 		if err != nil {
 			return nil, err
 		}
 
-		if leftExp.Type() != ir.Bool || rightExp.Type() != ir.Bool {
+		if leftExp.Type() != types.Bool || rightExp.Type() != types.Bool {
 			return nil, fmt.Errorf(
 				"OR (||) operation can only occur between booleans at %d:%d "+
 					"near '%s'",
@@ -458,7 +454,7 @@ func inferExp(
 
 	case *parser.AssignExpContext:
 		varName := e.Ident().GetText()
-		varType, ok := env.LookupVar(varName)
+		varType, ok := tc.env.LookupVar(varName)
 		if !ok {
 			return nil, fmt.Errorf(
 				"trying to assign to undeclared variable '%s' at %d:%d",
@@ -466,7 +462,7 @@ func inferExp(
 			)
 		}
 
-		expValue, err := inferExp(env, e.Exp())
+		expValue, err := tc.inferExp(e.Exp())
 		if err != nil {
 			return nil, err
 		}
@@ -495,8 +491,8 @@ func inferExp(
 
 }
 
-func promoteExp(exp tast.Exp, typ ir.Type) tast.Exp {
-	if exp.Type() == ir.Int && typ == ir.Double {
+func promoteExp(exp tast.Exp, typ types.Type) tast.Exp {
+	if exp.Type() == types.Int && typ == types.Double {
 		return tast.NewIntToDoubleExp(exp)
 	}
 	return exp

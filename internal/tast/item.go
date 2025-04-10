@@ -1,6 +1,6 @@
 package tast
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+import types "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 
 type Item interface {
 	TypedNode
@@ -17,7 +17,7 @@ func (*NoInitItem) itemNode() {}
 
 func NewNoInitItem(
 	id string,
-	typ ir.Type,
+	typ types.Type,
 	line int,
 	col int,
 	text string,
@@ -46,7 +46,7 @@ func (*InitItem) itemNode() {}
 func NewInitItem(
 	id string,
 	exp Exp,
-	typ ir.Type,
+	typ types.Type,
 	line int,
 	col int,
 	text string,

@@ -58,6 +58,7 @@ func main() {
 
 	tree := pars.Prgm()
 
+	typechk := typechk.NewTypeChecker()
 	_, err := typechk.Typecheck(tree)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR")

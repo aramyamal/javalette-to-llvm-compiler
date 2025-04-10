@@ -5,12 +5,12 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func extractParams(
 	args []parser.IArgContext,
-) ([]string, map[string]ir.Type, error) {
+) ([]string, map[string]types.Type, error) {
 	_, paramNames, params, err := extractArgs(args) // Ignore typedArgs slice
 	return paramNames, params, err
 }
@@ -22,11 +22,11 @@ func toAstArgs(args []parser.IArgContext) ([]tast.Arg, error) {
 
 func extractArgs(
 	args []parser.IArgContext,
-) ([]tast.Arg, []string, map[string]ir.Type, error) {
+) ([]tast.Arg, []string, map[string]types.Type, error) {
 
 	typedArgs := []tast.Arg{}
 	paramNames := []string{}
-	params := make(map[string]ir.Type)
+	params := make(map[string]types.Type)
 
 	for _, arg := range args {
 		line, col, text := extractPosData(arg)
@@ -34,7 +34,7 @@ func extractArgs(
 		switch a := arg.(type) {
 		case *parser.ParamArgContext:
 			paramName := a.Ident().GetText()
-			paramType, err := toAstType(a.Type_())
+			paramType, err := toIrType(a.Type_())
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -46,7 +46,7 @@ func extractArgs(
 				)
 			}
 
-			if paramType == ir.Void {
+			if paramType == types.Void {
 				return nil, nil, nil, fmt.Errorf(
 					"function definition parameter %s of type void at %d:%d",
 					paramName, line, col,

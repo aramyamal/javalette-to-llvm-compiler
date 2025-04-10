@@ -6,10 +6,19 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
-func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
+type TypeChecker struct {
+	env *env.Environment[types.Type]
+}
+
+func NewTypeChecker() *TypeChecker {
+	env := env.NewEnvironment[types.Type]()
+	return &TypeChecker{env: env}
+}
+
+func (tc *TypeChecker) Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 	prgm, ok := tree.(*parser.PrgmContext)
 	if !ok {
 		return nil, fmt.Errorf("expected *parser.ProgramContext, got %T", tree)
@@ -19,26 +28,24 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 		return nil, err
 	}
 
-	env := env.NewEnvironment[ir.Type]()
+	tc.env.AddStdFunc("printInt", types.Void, types.Int)
+	tc.env.AddStdFunc("printDouble", types.Void, types.Double)
+	tc.env.AddStdFunc("printString", types.Void, types.String)
+	tc.env.AddStdFuncNoParam("readInt", types.Int)
+	tc.env.AddStdFuncNoParam("readDouble", types.Double)
 
-	env.AddStdFunc("printInt", ir.Void, ir.Int)
-	env.AddStdFunc("printDouble", ir.Void, ir.Double)
-	env.AddStdFunc("printString", ir.Void, ir.String)
-	env.AddStdFuncNoParam("readInt", ir.Int)
-	env.AddStdFuncNoParam("readDouble", ir.Double)
+	tc.env.EnterContext()
 
-	env.EnterContext()
-
-	if err := validateFuncSigns(env, defs); err != nil {
+	if err := validateFuncSigns(tc.env, defs); err != nil {
 		return nil, err
 	}
 
-	typedDefs, err := checkDefs(env, prgm.AllDef())
+	typedDefs, err := tc.checkDefs(prgm.AllDef())
 	if err != nil {
 		return nil, err
 	}
 
-	env.ExitContext()
+	tc.env.ExitContext()
 
 	typedPrgm := tast.NewPrgm(typedDefs)
 	return typedPrgm, nil

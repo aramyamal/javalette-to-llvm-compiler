@@ -6,32 +6,25 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
-func checkDefs(
-	env *env.Environment[ir.Type],
-	defs []parser.IDefContext,
-) ([]tast.Def, error) {
+func (tc *TypeChecker) checkDefs(defs []parser.IDefContext) ([]tast.Def, error) {
 
 	var typedDefs []tast.Def
 	for _, def := range defs {
-		typedDef, err := checkDef(env, def)
+		typedDef, err := tc.checkDef(def)
 		if err != nil {
 			return nil, err
 		}
 		typedDefs = append(typedDefs, typedDef)
-		env.SetReturnType(ir.Unknown)
+		tc.env.SetReturnType(types.Unknown)
 	}
 	return typedDefs, nil
 }
 
-func checkDef(
-	env *env.Environment[ir.Type],
-	def parser.IDefContext,
-) (tast.Def, error) {
-	env.EnterContext()
+func (tc *TypeChecker) checkDef(def parser.IDefContext) (tast.Def, error) {
+	tc.env.EnterContext()
 	line, col, text := extractPosData(def)
 	switch d := def.(type) {
 	case *parser.FuncDefContext:
@@ -44,7 +37,7 @@ func checkDef(
 		}
 
 		for varName, typ := range params {
-			ok := env.ExtendVar(varName, typ)
+			ok := tc.env.ExtendVar(varName, typ)
 			if !ok {
 				return nil, fmt.Errorf(
 					"duplicate parameter name '%s' in function '%s' at %d:%d",
@@ -53,15 +46,15 @@ func checkDef(
 			}
 		}
 
-		typ, err := toAstType(d.Type_())
+		typ, err := toIrType(d.Type_())
 		if err != nil {
 			return nil, err
 		}
-		env.SetReturnType(typ)
+		tc.env.SetReturnType(typ)
 
 		var typedStms []tast.Stm
 		for _, stm := range d.AllStm() {
-			typedStm, err := checkStm(env, stm)
+			typedStm, err := tc.checkStm(stm)
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +63,7 @@ func checkDef(
 
 		hasReturn := slices.ContainsFunc(typedStms, guaranteesReturn)
 
-		if typ != ir.Void && !hasReturn {
+		if typ != types.Void && !hasReturn {
 			return nil, fmt.Errorf(
 				"function '%s' at %d:%d does not have a return",
 				text, line, col,
@@ -81,7 +74,7 @@ func checkDef(
 		if err != nil {
 			return nil, err
 		}
-		env.ExitContext()
+		tc.env.ExitContext()
 		return tast.NewFuncDef(
 			d.Ident().GetText(),
 			typedArgs,

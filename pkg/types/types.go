@@ -1,4 +1,4 @@
-package ir
+package types
 
 type Type int
 

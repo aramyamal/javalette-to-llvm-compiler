@@ -5,18 +5,14 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
-func checkStm(
-	env *env.Environment[ir.Type],
-	stm parser.IStmContext,
-) (tast.Stm, error) {
+func (tc *TypeChecker) checkStm(stm parser.IStmContext) (tast.Stm, error) {
 	line, col, text := extractPosData(stm)
 	switch s := stm.(type) {
 	case *parser.ExpStmContext:
-		typedExp, err := inferExp(env, s.Exp())
+		typedExp, err := tc.inferExp(s.Exp())
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +30,7 @@ func checkStm(
 		if err != nil {
 			return nil, err
 		}
-		if typ == ir.Void {
+		if typ == types.Void {
 			return nil, fmt.Errorf(
 				"variable declaration of type void at %d:%d near '%s'",
 				line, col, text,
@@ -42,7 +38,7 @@ func checkStm(
 		}
 		items := []tast.Item{}
 		for _, item := range s.AllItem() {
-			typedItem, err := checkItem(env, typ, item)
+			typedItem, err := tc.checkItem(typ, item)
 			if err != nil {
 				return nil, err
 			}
@@ -51,11 +47,11 @@ func checkStm(
 		return tast.NewDeclsStm(items, line, col, text), nil
 
 	case *parser.ReturnStmContext:
-		typedExp, err := inferExp(env, s.Exp())
+		typedExp, err := tc.inferExp(s.Exp())
 		if err != nil {
 			return nil, err
 		}
-		returnType := env.ReturnType()
+		returnType := tc.env.ReturnType()
 		expType := typedExp.Type()
 		if isConvertible(returnType, expType) {
 			return tast.NewReturnStm(
@@ -69,75 +65,75 @@ func checkStm(
 			returnType.String(), expType.String(),
 		)
 	case *parser.VoidReturnStmContext:
-		returnType := env.ReturnType()
-		if isConvertible(returnType, ir.Void) {
+		returnType := tc.env.ReturnType()
+		if isConvertible(returnType, types.Void) {
 			return tast.NewVoidReturnStm(line, col, text), nil
 		}
 		return nil, fmt.Errorf(
 			"illegal conversion in return. Expected %s, "+
 				"but got %s instead",
-			returnType.String(), ir.Void.String(),
+			returnType.String(), types.Void.String(),
 		)
 	case *parser.WhileStmContext:
-		typedExp, err := inferExp(env, s.Exp())
+		typedExp, err := tc.inferExp(s.Exp())
 		if err != nil {
 			return nil, err
 		}
-		if typedExp.Type() != ir.Bool {
+		if typedExp.Type() != types.Bool {
 			return nil, fmt.Errorf(
 				"expression in while-loop does not have type bool at %d:%d "+
 					"near '%s'",
 				line, col, text,
 			)
 		}
-		env.EnterContext()
-		typedStm, err := checkStm(env, s.Stm())
+		tc.env.EnterContext()
+		typedStm, err := tc.checkStm(s.Stm())
 		if err != nil {
 			return nil, err
 		}
-		env.ExitContext()
+		tc.env.ExitContext()
 		return tast.NewWhileStm(typedExp, typedStm, line, col, text), nil
 
 	case *parser.BlockStmContext:
-		env.EnterContext()
+		tc.env.EnterContext()
 		typedStms := []tast.Stm{}
 		for _, stm := range s.AllStm() {
-			typedStm, err := checkStm(env, stm)
+			typedStm, err := tc.checkStm(stm)
 			if err != nil {
 				return nil, err
 			}
 			typedStms = append(typedStms, typedStm)
 		}
-		env.ExitContext()
+		tc.env.ExitContext()
 		return tast.NewBlockStm(typedStms, line, col, text), nil
 
 	case *parser.IfStmContext:
-		typedExp, err := inferExp(env, s.Exp())
+		typedExp, err := tc.inferExp(s.Exp())
 		if err != nil {
 			return nil, err
 		}
-		if typedExp.Type() != ir.Bool {
+		if typedExp.Type() != types.Bool {
 			return nil, fmt.Errorf(
 				"if else expression does not have type bool at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
 
-		env.EnterContext()
-		thenStm, err := checkStm(env, s.Stm(0))
+		tc.env.EnterContext()
+		thenStm, err := tc.checkStm(s.Stm(0))
 		if err != nil {
 			return nil, err
 		}
-		env.ExitContext()
+		tc.env.ExitContext()
 
 		var elseStm tast.Stm = nil
 		if len(s.AllStm()) > 1 {
-			env.EnterContext()
-			elseStm, err = checkStm(env, s.Stm(1))
+			tc.env.EnterContext()
+			elseStm, err = tc.checkStm(s.Stm(1))
 			if err != nil {
 				return nil, err
 			}
-			env.ExitContext()
+			tc.env.ExitContext()
 		}
 		return tast.NewIfStm(typedExp, thenStm, elseStm, line, col, text), nil
 
