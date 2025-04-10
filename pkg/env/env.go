@@ -1,4 +1,4 @@
-package typechk
+package env
 
 type Context[T any] map[string]T
 
@@ -8,9 +8,9 @@ func (c Context[T]) Has(key string) bool {
 }
 
 type Signature[T any] struct {
-	paramNames []string
-	params     map[string]T
-	returns    T
+	ParamNames []string
+	Params     map[string]T
+	Returns    T
 }
 
 type Environment[T any] struct {

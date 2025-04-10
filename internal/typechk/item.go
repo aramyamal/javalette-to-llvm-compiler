@@ -5,11 +5,13 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func checkItem(
-	env *Environment[tast.Type],
-	typ tast.Type,
+	env *env.Environment[ir.Type],
+	typ ir.Type,
 	item parser.IItemContext,
 ) (tast.Item, error) {
 	line, col, text := extractPosData(item)

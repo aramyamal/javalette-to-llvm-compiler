@@ -1,5 +1,7 @@
 package tast
 
+import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+
 // Stm represents an untyped statement node in the typed abstract syntax tree
 type Stm interface {
 	Node
@@ -32,7 +34,7 @@ var _ Stm = (*ExpStm)(nil)
 
 // DeclsStm is a declaration statement node in the typed abstract syntax tree
 type DeclsStm struct {
-	Type  Type
+	Type  ir.Type
 	Items []Item
 
 	BaseNode

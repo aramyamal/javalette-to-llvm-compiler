@@ -1,5 +1,7 @@
 package tast
 
+import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
+
 type Exp interface {
 	TypedNode
 	HasSideEffect() bool
@@ -17,7 +19,7 @@ func (e ParenExp) HasSideEffect() bool { return e.Exp.HasSideEffect() }
 
 func NewParenExp(
 	exp Exp,
-	typ Type,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -49,7 +51,7 @@ func NewIntToDoubleExp(
 	return &IntToDoubleExp{
 		Exp: e,
 		BaseTypedNode: BaseTypedNode{
-			typ:      Double,
+			typ:      ir.Double,
 			BaseNode: BaseNode{line: e.Line(), col: e.Col(), text: e.Text()},
 		},
 	}
@@ -65,7 +67,7 @@ type BoolExp struct {
 }
 
 func (*BoolExp) expNode()           {}
-func (BoolExp) Type() Type          { return Bool }
+func (BoolExp) Type() ir.Type       { return ir.Bool }
 func (BoolExp) HasSideEffect() bool { return false }
 
 func NewBoolExp(
@@ -90,7 +92,7 @@ type IntExp struct {
 }
 
 func (*IntExp) expNode()           {}
-func (IntExp) Type() Type          { return Int }
+func (IntExp) Type() ir.Type       { return ir.Int }
 func (IntExp) HasSideEffect() bool { return false }
 
 func NewIntExp(
@@ -115,7 +117,7 @@ type DoubleExp struct {
 }
 
 func (*DoubleExp) expNode()           {}
-func (DoubleExp) Type() Type          { return Double }
+func (DoubleExp) Type() ir.Type       { return ir.Double }
 func (DoubleExp) HasSideEffect() bool { return false }
 
 func NewDoubleExp(
@@ -144,7 +146,7 @@ func (IdentExp) HasSideEffect() bool { return false }
 
 func NewIdentExp(
 	id string,
-	typ Type,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -174,7 +176,7 @@ func (FuncExp) HasSideEffect() bool { return true }
 func NewFuncExp(
 	id string,
 	exps []Exp,
-	typ Type,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -199,7 +201,7 @@ type StringExp struct {
 }
 
 func (*StringExp) expNode()           {}
-func (StringExp) Type() Type          { return String }
+func (StringExp) Type() ir.Type       { return ir.String }
 func (StringExp) HasSideEffect() bool { return false }
 
 func NewStringExp(
@@ -228,7 +230,7 @@ func (NegExp) HasSideEffect() bool { return false }
 
 func NewNegExp(
 	exp Exp,
-	typ Type,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -252,7 +254,7 @@ type NotExp struct {
 }
 
 func (*NotExp) expNode()           {}
-func (*NotExp) Type() Type         { return Bool }
+func (*NotExp) Type() ir.Type      { return ir.Bool }
 func (NotExp) HasSideEffect() bool { return false }
 
 func NewNotExp(
@@ -272,7 +274,7 @@ var _ Exp = (*NotExp)(nil)
 
 type PostExp struct {
 	Id string
-	Op Op
+	Op ir.Op
 
 	BaseTypedNode
 }
@@ -282,8 +284,8 @@ func (PostExp) HasSideEffect() bool { return true }
 
 func NewPostExp(
 	id string,
-	op Op,
-	typ Type,
+	op ir.Op,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -303,7 +305,7 @@ var _ Exp = (*PostExp)(nil)
 
 type PreExp struct {
 	Id string
-	Op Op
+	Op ir.Op
 
 	BaseTypedNode
 }
@@ -313,8 +315,8 @@ func (PreExp) HasSideEffect() bool { return true }
 
 func NewPreExp(
 	id string,
-	op Op,
-	typ Type,
+	op ir.Op,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -335,7 +337,7 @@ var _ Exp = (*PreExp)(nil)
 type MulExp struct {
 	LeftExp  Exp
 	RightExp Exp
-	Op       Op
+	Op       ir.Op
 
 	BaseTypedNode
 }
@@ -346,8 +348,8 @@ func (MulExp) HasSideEffect() bool { return false }
 func NewMulExp(
 	leftExp Exp,
 	rightExp Exp,
-	op Op,
-	typ Type,
+	op ir.Op,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -369,7 +371,7 @@ var _ Exp = (*MulExp)(nil)
 type AddExp struct {
 	LeftExp  Exp
 	RightExp Exp
-	Op       Op
+	Op       ir.Op
 
 	BaseTypedNode
 }
@@ -380,8 +382,8 @@ func (AddExp) HasSideEffect() bool { return false }
 func NewAddExp(
 	leftExp Exp,
 	rightExp Exp,
-	op Op,
-	typ Type,
+	op ir.Op,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,
@@ -403,19 +405,19 @@ var _ Exp = (*AddExp)(nil)
 type CmpExp struct {
 	LeftExp  Exp
 	RightExp Exp
-	Op       Op
+	Op       ir.Op
 
 	BaseNode
 }
 
 func (*CmpExp) expNode()           {}
-func (CmpExp) Type() Type          { return Bool }
+func (CmpExp) Type() ir.Type       { return ir.Bool }
 func (CmpExp) HasSideEffect() bool { return false }
 
 func NewCmpExp(
 	leftExp Exp,
 	rightExp Exp,
-	op Op,
+	op ir.Op,
 	line int,
 	col int,
 	text string,
@@ -439,7 +441,7 @@ type AndExp struct {
 }
 
 func (*AndExp) expNode()           {}
-func (AndExp) Type() Type          { return Bool }
+func (AndExp) Type() ir.Type       { return ir.Bool }
 func (AndExp) HasSideEffect() bool { return false }
 
 func NewAndExp(
@@ -467,7 +469,7 @@ type OrExp struct {
 }
 
 func (*OrExp) expNode()           {}
-func (OrExp) Type() Type          { return Bool }
+func (OrExp) Type() ir.Type       { return ir.Bool }
 func (OrExp) HasSideEffect() bool { return false }
 
 func NewOrExp(
@@ -500,7 +502,7 @@ func (AssignExp) HasSideEffect() bool { return true }
 func NewAssignExp(
 	id string,
 	exp Exp,
-	typ Type,
+	typ ir.Type,
 	line int,
 	col int,
 	text string,

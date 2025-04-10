@@ -5,6 +5,8 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
@@ -17,13 +19,13 @@ func Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 		return nil, err
 	}
 
-	env := NewEnvironment[tast.Type]()
+	env := env.NewEnvironment[ir.Type]()
 
-	env.AddStdFunc("printInt", tast.Void, tast.Int)
-	env.AddStdFunc("printDouble", tast.Void, tast.Double)
-	env.AddStdFunc("printString", tast.Void, tast.String)
-	env.AddStdFuncNoParam("readInt", tast.Int)
-	env.AddStdFuncNoParam("readDouble", tast.Double)
+	env.AddStdFunc("printInt", ir.Void, ir.Int)
+	env.AddStdFunc("printDouble", ir.Void, ir.Double)
+	env.AddStdFunc("printString", ir.Void, ir.String)
+	env.AddStdFuncNoParam("readInt", ir.Int)
+	env.AddStdFuncNoParam("readDouble", ir.Double)
 
 	env.EnterContext()
 

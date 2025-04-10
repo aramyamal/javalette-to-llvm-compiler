@@ -5,11 +5,12 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func extractParams(
 	args []parser.IArgContext,
-) ([]string, map[string]tast.Type, error) {
+) ([]string, map[string]ir.Type, error) {
 	_, paramNames, params, err := extractArgs(args) // Ignore typedArgs slice
 	return paramNames, params, err
 }
@@ -21,11 +22,11 @@ func toAstArgs(args []parser.IArgContext) ([]tast.Arg, error) {
 
 func extractArgs(
 	args []parser.IArgContext,
-) ([]tast.Arg, []string, map[string]tast.Type, error) {
+) ([]tast.Arg, []string, map[string]ir.Type, error) {
 
 	typedArgs := []tast.Arg{}
 	paramNames := []string{}
-	params := make(map[string]tast.Type)
+	params := make(map[string]ir.Type)
 
 	for _, arg := range args {
 		line, col, text := extractPosData(arg)
@@ -45,7 +46,7 @@ func extractArgs(
 				)
 			}
 
-			if paramType == tast.Void {
+			if paramType == ir.Void {
 				return nil, nil, nil, fmt.Errorf(
 					"function definition parameter %s of type void at %d:%d",
 					paramName, line, col,

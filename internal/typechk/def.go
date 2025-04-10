@@ -2,14 +2,16 @@ package typechk
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"slices"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func checkDefs(
-	env *Environment[tast.Type],
+	env *env.Environment[ir.Type],
 	defs []parser.IDefContext,
 ) ([]tast.Def, error) {
 
@@ -20,13 +22,13 @@ func checkDefs(
 			return nil, err
 		}
 		typedDefs = append(typedDefs, typedDef)
-		env.SetReturnType(tast.Unknown)
+		env.SetReturnType(ir.Unknown)
 	}
 	return typedDefs, nil
 }
 
 func checkDef(
-	env *Environment[tast.Type],
+	env *env.Environment[ir.Type],
 	def parser.IDefContext,
 ) (tast.Def, error) {
 	env.EnterContext()
@@ -68,7 +70,7 @@ func checkDef(
 
 		hasReturn := slices.ContainsFunc(typedStms, guaranteesReturn)
 
-		if typ != tast.Void && !hasReturn {
+		if typ != ir.Void && !hasReturn {
 			return nil, fmt.Errorf(
 				"function '%s' at %d:%d does not have a return",
 				text, line, col,

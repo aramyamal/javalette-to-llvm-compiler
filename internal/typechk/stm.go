@@ -5,10 +5,12 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func checkStm(
-	env *Environment[tast.Type],
+	env *env.Environment[ir.Type],
 	stm parser.IStmContext,
 ) (tast.Stm, error) {
 	line, col, text := extractPosData(stm)
@@ -28,11 +30,11 @@ func checkStm(
 		return tast.NewExpStm(typedExp, line, col, text), nil
 
 	case *parser.DeclsStmContext:
-		typ, err := toAstType(s.Type_())
+		typ, err := toIrType(s.Type_())
 		if err != nil {
 			return nil, err
 		}
-		if typ == tast.Void {
+		if typ == ir.Void {
 			return nil, fmt.Errorf(
 				"variable declaration of type void at %d:%d near '%s'",
 				line, col, text,
@@ -68,20 +70,20 @@ func checkStm(
 		)
 	case *parser.VoidReturnStmContext:
 		returnType := env.ReturnType()
-		if isConvertible(returnType, tast.Void) {
+		if isConvertible(returnType, ir.Void) {
 			return tast.NewVoidReturnStm(line, col, text), nil
 		}
 		return nil, fmt.Errorf(
 			"illegal conversion in return. Expected %s, "+
 				"but got %s instead",
-			returnType.String(), tast.Void.String(),
+			returnType.String(), ir.Void.String(),
 		)
 	case *parser.WhileStmContext:
 		typedExp, err := inferExp(env, s.Exp())
 		if err != nil {
 			return nil, err
 		}
-		if typedExp.Type() != tast.Bool {
+		if typedExp.Type() != ir.Bool {
 			return nil, fmt.Errorf(
 				"expression in while-loop does not have type bool at %d:%d "+
 					"near '%s'",
@@ -114,7 +116,7 @@ func checkStm(
 		if err != nil {
 			return nil, err
 		}
-		if typedExp.Type() != tast.Bool {
+		if typedExp.Type() != ir.Bool {
 			return nil, fmt.Errorf(
 				"if else expression does not have type bool at %d:%d near '%s'",
 				line, col, text,

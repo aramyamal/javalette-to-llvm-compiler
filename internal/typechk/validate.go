@@ -3,9 +3,12 @@ package typechk
 import (
 	"fmt"
 
+	"slices"
+
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"slices"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/ir"
 )
 
 func validateMainFunc(defs []parser.IDefContext) error {
@@ -27,9 +30,9 @@ func validateMainFunc(defs []parser.IDefContext) error {
 		return fmt.Errorf("entrypoint 'main' may not have input variables")
 	}
 
-	if typ, err := toAstType(mainFunc.Type_()); err != nil {
+	if typ, err := toIrType(mainFunc.Type_()); err != nil {
 		return err
-	} else if typ != tast.Int {
+	} else if typ != ir.Int {
 		return fmt.Errorf("'main' entrypoint function does not have type int")
 	}
 
@@ -37,13 +40,13 @@ func validateMainFunc(defs []parser.IDefContext) error {
 }
 
 func validateFuncSigns(
-	env *Environment[tast.Type],
+	env *env.Environment[ir.Type],
 	defs []parser.IDefContext,
 ) error {
 	for _, def := range defs {
 		if funcDef, ok := def.(*parser.FuncDefContext); ok {
 			name := funcDef.Ident().GetText()
-			returnType, err := toAstType(funcDef.Type_())
+			returnType, err := toIrType(funcDef.Type_())
 			if err != nil {
 				return err
 			}
