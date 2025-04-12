@@ -55,6 +55,7 @@ func (tc *TypeChecker) checkStm(stm parser.IStmContext) (tast.Stm, error) {
 		expType := typedExp.Type()
 		if isConvertible(returnType, expType) {
 			return tast.NewReturnStm(
+				returnType,
 				promoteExp(typedExp, returnType),
 				line, col, text,
 			), nil

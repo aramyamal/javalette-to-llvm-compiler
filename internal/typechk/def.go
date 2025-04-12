@@ -28,9 +28,6 @@ func (tc *TypeChecker) checkDef(def parser.IDefContext) (tast.Def, error) {
 	line, col, text := extractPosData(def)
 	switch d := def.(type) {
 	case *parser.FuncDefContext:
-		// TODO:
-		// handle Ident by adding to func. context,
-
 		_, params, err := extractParams(d.AllArg())
 		if err != nil {
 			return nil, err

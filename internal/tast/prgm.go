@@ -2,7 +2,7 @@ package tast
 
 type Prgm struct {
 	Node
-	defs []Def
+	Defs []Def
 }
 
 func (*Prgm) Line() int    { return 0 }
@@ -12,5 +12,5 @@ func (*Prgm) Text() string { return "" }
 func NewPrgm(
 	defs []Def,
 ) *Prgm {
-	return &Prgm{defs: defs}
+	return &Prgm{Defs: defs}
 }

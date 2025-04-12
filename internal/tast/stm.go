@@ -59,7 +59,8 @@ var _ Stm = (*DeclsStm)(nil)
 
 // ReturnStm is a return statement node in the typed abstract syntax tree
 type ReturnStm struct {
-	Exp Exp
+	Type types.Type
+	Exp  Exp
 
 	BaseNode
 }
@@ -67,12 +68,14 @@ type ReturnStm struct {
 func (*ReturnStm) stmNode() {}
 
 func NewReturnStm(
+	typ types.Type,
 	exp Exp,
 	line int,
 	col int,
 	text string,
 ) *ReturnStm {
 	return &ReturnStm{
+		Type:     typ,
 		Exp:      exp,
 		BaseNode: BaseNode{line: line, col: col, text: text},
 	}

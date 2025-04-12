@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/codegen"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/typechk"
 )
 
@@ -29,10 +31,14 @@ func (e *errorListener) SyntaxError(
 }
 
 func main() {
+	outputFile := flag.String("o", "", "Output file (default: stdout)")
+	flag.Parse()
+	args := flag.Args()
+
+	var err error
 	var stream antlr.CharStream
-	if len(os.Args) > 1 {
-		filepath := os.Args[1]
-		var err error
+	if len(args) > 0 {
+		filepath := args[0]
 		stream, err = antlr.NewFileStream(filepath)
 		if err != nil {
 			log.Fatalf("Error reading file %v: %v", filepath, err)
@@ -52,19 +58,36 @@ func main() {
 	lexer.AddErrorListener(errorList)
 
 	tokens := antlr.NewCommonTokenStream(lexer, 0)
-	pars := parser.NewJavaletteParser(tokens)
-	pars.RemoveErrorListeners()
-	pars.AddErrorListener(&errorListener{})
+	parser := parser.NewJavaletteParser(tokens)
+	parser.RemoveErrorListeners()
+	parser.AddErrorListener(&errorListener{})
 
-	tree := pars.Prgm()
+	tree := parser.Prgm()
 
 	typechk := typechk.NewTypeChecker()
-	_, err := typechk.Typecheck(tree)
+	tast, err := typechk.Typecheck(tree)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR")
 		log.Fatalln(err)
 	}
 
-	// temporary, checking if parser works
+	var writer io.Writer
+	if *outputFile != "" {
+		file, err := os.Create(*outputFile)
+		if err != nil {
+			log.Fatalf("Error creating output file %v: %v", *outputFile, err)
+		}
+		defer file.Close()
+		writer = file
+	} else {
+		writer = os.Stdout
+	}
+
+	codegen := codegen.NewCodeGenerator(writer)
+	if err := codegen.GenerateCode(tast); err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR")
+		log.Fatalln(err)
+	}
+
 	fmt.Fprintln(os.Stderr, "OK")
 }
