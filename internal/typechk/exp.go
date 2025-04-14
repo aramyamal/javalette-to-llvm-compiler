@@ -124,7 +124,9 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		), nil
 
 	case *parser.StringExpContext:
-		return tast.NewStringExp(e.String_().GetText(), line, col, text), nil
+		stringWithQuotes := e.String_().GetText()
+		stringWithoutQuotes := stringWithQuotes[1 : len(stringWithQuotes)-1]
+		return tast.NewStringExp(stringWithoutQuotes, line, col, text), nil
 
 	case *parser.NegExpContext:
 		typedExp, err := tc.inferExp(e.Exp())
