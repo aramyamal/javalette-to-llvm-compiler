@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 type LLVMWriter struct {
@@ -13,12 +11,12 @@ type LLVMWriter struct {
 }
 
 type Param struct {
-	Type types.Type
-	Name Var
+	Type Type
+	Name Reg
 }
 
-func NewParam(typ types.Type, name string) Param {
-	return Param{Type: typ, Name: Var(name)}
+func NewParam(typ Type, name string) Param {
+	return Param{Type: typ, Name: Reg(name)}
 }
 
 func NewLLVMWriter(w io.Writer) *LLVMWriter {
@@ -31,19 +29,19 @@ func (w *LLVMWriter) Newline() error {
 }
 
 func (w *LLVMWriter) Declare(
-	returns types.Type,
+	returns Type,
 	funcName Global,
-	inputs ...types.Type,
+	inputs ...Type,
 ) error {
 	var inputTypes []string
 	for _, input := range inputs {
-		inputTypes = append(inputTypes, toLlvm(input))
+		inputTypes = append(inputTypes, input.String())
 	}
 	llvmInputs := strings.Join(inputTypes, ", ")
 
 	llvmInstr := fmt.Sprintf(
 		"declare %s %s(%s)\n",
-		toLlvm(returns),
+		returns.String(),
 		funcName.String(),
 		llvmInputs,
 	)
@@ -54,17 +52,20 @@ func (w *LLVMWriter) Declare(
 }
 
 func (w *LLVMWriter) StartDefine(
-	returns types.Type,
+	returns Type,
 	funcName Global,
 	inputs ...Param,
 ) error {
 	var llvmParams []string
 	for _, param := range inputs {
-		llvmParams = append(llvmParams, toLlvm(param.Type)+param.Name.String())
+		llvmParams = append(
+			llvmParams,
+			param.Type.String()+" "+param.Name.String(),
+		)
 	}
 	llvmInstr := fmt.Sprintf(
 		"define %s %s(%s){\n",
-		toLlvm(returns), Global(funcName), strings.Join(llvmParams, ", "),
+		returns.String(), funcName.String(), strings.Join(llvmParams, ", "),
 	)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
@@ -85,62 +86,79 @@ func (w *LLVMWriter) Label(name string) error {
 	return w.Block(name)
 }
 
-func (w *LLVMWriter) Ret(typ types.Type, val Value) error {
-	llvmInstr := fmt.Sprintf("\tret %s %s\n", toLlvm(typ), val.String())
+func (w *LLVMWriter) Ret(typ Type, val Value) error {
+	llvmInstr := fmt.Sprintf("\tret %s %s\n", typ.String(), val.String())
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
 
-func (w *LLVMWriter) Constant(des Var, typ types.Type, lit Literal) error {
+func (w *LLVMWriter) Load(des Reg, typ Type, from Reg) error {
+	llvmType := typ.String()
 	llvmInstr := fmt.Sprintf(
-		"\t%s = %s %s\n",
-		des.String(), toLlvm(typ), lit.String(),
+		"\t%s = load %s, %s* %s, align %d\n",
+		des.String(), llvmType, llvmType, from.String(), typ.alignment(),
 	)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
-
 }
 
-func (w *LLVMWriter) Add(typ types.Type, des Var, lhs, rhs Value) error {
+func (w *LLVMWriter) Constant(des Reg, typ Type, lit Value) error {
+	llvmInstr := fmt.Sprintf(
+		"\t%s = %s %s\n",
+		des.String(), typ.String(), lit.String(),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) GetElementPtr(
+	des Reg,
+	typ Type,
+	from Global,
+	idx ...int,
+) error {
+	var indices []string
+	for _, i := range idx {
+		indices = append(indices, fmt.Sprintf("i32 %d", i))
+	}
+	t := typ.String()
+	llvmInstr := fmt.Sprintf(
+		"\t%s = getelementptr %s, %s* %s, %s\n",
+		des.String(), t, t, from.String(), strings.Join(indices, ", "),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) InternalConstant(name Global, typ Type, val Value) error {
+	llvmInstr := fmt.Sprintf(
+		"%s = internal constant %s %s\n",
+		name.String(), typ.String(), val.String(),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Add(typ Type, des Reg, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
-	case types.Int:
+	case I32:
 		llvmInstr = fmt.Sprintf(
 			"%s = add i32 %s, %s\n",
 			des.String(), lhs.String(), rhs.String(),
 		)
-	case types.Double:
+	case Double:
 		llvmInstr = fmt.Sprintf(
 			"%s = fadd double %s, %s\n",
 			des.String(), lhs.String(), rhs.String(),
 		)
 	default:
 		return fmt.Errorf(
-			"unsupperted type '%s' for LLVM instruction 'add'",
+			"unsupported type '%s' for LLVM instruction 'add'",
 			typ.String(),
 		)
 	}
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
-}
-
-func toLlvm(typ types.Type) string {
-	switch typ {
-	case types.Int:
-		return "i32"
-	case types.Bool:
-		return "i1"
-	case types.Double:
-		return "double"
-	case types.String:
-		return "i8*"
-	case types.Void:
-		return "void"
-	default:
-		panic(fmt.Sprintf(
-			"Conversion of type %s to LLVM not supported",
-			typ.String(),
-		))
-	}
 }

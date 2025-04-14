@@ -7,54 +7,57 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 type CodeGenerator struct {
-	env   *env.Environment[llvm.Var]
+	env   *env.Environment[llvm.Reg]
 	write *llvm.LLVMWriter
 	ng    *NameGenerator
 }
 
 func NewCodeGenerator(w io.Writer) *CodeGenerator {
-	env := env.NewEnvironment[llvm.Var]()
+	env := env.NewEnvironment[llvm.Reg]()
 	writer := llvm.NewLLVMWriter(w)
-	nameGen := &NameGenerator{}
+	nameGen := NewNameGenerator()
 	return &CodeGenerator{env: env, write: writer, ng: nameGen}
 }
 
 func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	// boilerplate std functions
-	if err := cg.write.Declare(types.Void, "printInt", types.Int); err != nil {
+	if err := cg.write.Declare(
+		llvm.Void, "printInt", llvm.I32); err != nil {
 		return err
 	}
 	if err := cg.write.Declare(
-		types.Void, "printDouble", types.Double,
+		llvm.Void, "printDouble", llvm.Double,
 	); err != nil {
 		return err
 	}
 	if err := cg.write.Declare(
-		types.Void, "printString", types.String,
+		llvm.Void, "printString", llvm.I8Ptr,
 	); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(types.Int, "readInt"); err != nil {
+	if err := cg.write.Declare(llvm.I32, "readInt"); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(types.Double, "readDouble"); err != nil {
+	if err := cg.write.Declare(llvm.Double, "readDouble"); err != nil {
 		return err
 	}
-	if err := cg.write.Newline(); err != nil {
-		return err
-	}
-
 	cg.env.EnterContext()
 	defer cg.env.ExitContext()
 
 	for _, def := range prgm.Defs {
 		cg.ng.resetReg()
 		cg.ng.resetLab()
+
+		if err := cg.write.Newline(); err != nil {
+			return err
+		}
 		if err := cg.compileDef(def); err != nil {
+			return err
+		}
+		if err := cg.handleStrings(); err != nil {
 			return err
 		}
 	}
@@ -70,7 +73,7 @@ func (cg *CodeGenerator) compileDef(def tast.Def) error {
 			return err
 		}
 		if err := cg.write.StartDefine(
-			d.Type(),
+			toLlvmType(d.Type()),
 			llvm.Global(d.Id),
 			params...,
 		); err != nil {
@@ -96,15 +99,16 @@ func (cg *CodeGenerator) compileDef(def tast.Def) error {
 func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	switch s := stm.(type) {
 	case *tast.ExpStm:
-		if err := cg.compileExp(s.Exp); err != nil {
+		if _, err := cg.compileExp(s.Exp); err != nil {
 			return err
 		}
 		return nil
 	case *tast.ReturnStm:
-		if err := cg.compileExp(s.Exp); err != nil {
+		reg, err := cg.compileExp(s.Exp)
+		if err != nil {
 			return err
 		}
-		if err := cg.write.Ret(s.Type, cg.ng.currentReg()); err != nil {
+		if err := cg.write.Ret(toLlvmType(s.Type), reg); err != nil {
 			return err
 		}
 		return nil
@@ -117,37 +121,61 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	}
 }
 
-func (cg *CodeGenerator) compileExp(exp tast.Exp) error {
+func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Reg, error) {
 	switch e := exp.(type) {
 	case *tast.ParenExp:
 		return cg.compileExp(e.Exp)
 	case *tast.BoolExp:
-		return cg.write.Constant(
-			cg.ng.nextReg(),
-			types.Bool,
-			llvm.LitBool(e.Value),
-		)
+		des := cg.ng.nextReg()
+		return des, cg.write.Constant(des, llvm.I1, llvm.LitBool(e.Value))
 	case *tast.IntExp:
-		return cg.write.Constant(
-			cg.ng.nextReg(),
-			types.Int,
-			llvm.LitInt(e.Value),
-		)
+		des := cg.ng.nextReg()
+		return des, cg.write.Constant(des, llvm.I32, llvm.LitInt(e.Value))
 	case *tast.DoubleExp:
-		return cg.write.Constant(
-			cg.ng.nextReg(),
-			types.Double,
-			llvm.LitDouble(e.Value),
+		des := cg.ng.nextReg()
+		return des, cg.write.Constant(des, llvm.Double, llvm.LitDouble(e.Value))
+	case *tast.StringExp:
+		des := cg.ng.nextReg()
+		glbVar, strLen := cg.ng.addString(e.Value)
+		return des, cg.write.GetElementPtr(
+			des,
+			llvm.Array(llvm.I8, strLen),
+			glbVar,
+			0, 0,
 		)
+
 	case *tast.IdentExp:
-		// varName, ok := cg.env.LookupVar(e.Id)
-		return nil
+		des := cg.ng.nextReg()
+		reg, ok := cg.env.LookupVar(e.Id)
+		if !ok {
+			return "", fmt.Errorf(
+				"internal compiler error: undefined variable '%s' encountered"+
+					"during code generation at %d:%d near '%s'. "+
+					"This should have been caught during type checking.",
+				e.Id, e.Line(), e.Col(), e.Text(),
+			)
+		}
+		return des, cg.write.Load(des, toLlvmType(e.Type()), reg)
 	default:
-		return fmt.Errorf(
+		return "", fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
 			e, e.Line(), e.Col(), e.Text(),
 		)
 	}
+}
+
+func (cg *CodeGenerator) handleStrings() error {
+	if err := cg.write.Newline(); err != nil {
+		return err
+	}
+	for name, str := range cg.ng.strMap {
+		typ := llvm.Array(llvm.I8, len(str)+1)
+		if err := cg.write.InternalConstant(name, typ, str); err != nil {
+			return err
+		}
+	}
+	cg.ng.resetStrings()
+	return nil
 }
 
 func extractParams(args []tast.Arg) ([]llvm.Param, error) {
@@ -155,7 +183,7 @@ func extractParams(args []tast.Arg) ([]llvm.Param, error) {
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case *tast.ParamArg:
-			params = append(params, llvm.NewParam(a.Type(), a.Id))
+			params = append(params, llvm.NewParam(toLlvmType(a.Type()), a.Id))
 		default:
 			return nil, fmt.Errorf(
 				"extractParams: unhandled Arg type %T at %d:%d near '%s'",
