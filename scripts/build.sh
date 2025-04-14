@@ -8,9 +8,9 @@ SCRIPT_DIR=$(dirname "$(realpath $0)")
 
 cd "$SCRIPT_DIR/.."
 
-mkdir -p bin
+mkdir -p build
 
-go build -o bin/jlc cmd/jlc/main.go 
+go build -o build/jlc cmd/jlc/main.go 
 
 echo "Finished building"
 

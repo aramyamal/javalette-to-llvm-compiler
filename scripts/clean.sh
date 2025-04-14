@@ -8,8 +8,8 @@ SCRIPT_DIR=$(dirname "$(realpath $0)")
 
 cd "$SCRIPT_DIR/.."
 
-echo "Removing bin/"
-rm -rf ./bin 
+echo "Removing build/"
+rm -rf ./build 
 echo "Removing gen/"
 rm -rf ./gen
 # echo "Removing antlr4 jar from tools/"
