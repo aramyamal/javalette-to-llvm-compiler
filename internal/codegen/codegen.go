@@ -3,7 +3,6 @@ package codegen
 import (
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
@@ -12,28 +11,16 @@ import (
 )
 
 type CodeGenerator struct {
-	env   *env.Environment[int]
+	env   *env.Environment[llvm.Var]
 	write *llvm.LLVMWriter
-	reg   int
+	ng    *NameGenerator
 }
 
 func NewCodeGenerator(w io.Writer) *CodeGenerator {
-	env := env.NewEnvironment[int]()
+	env := env.NewEnvironment[llvm.Var]()
 	writer := llvm.NewLLVMWriter(w)
-	return &CodeGenerator{env: env, write: writer, reg: 0}
-}
-
-func (cg *CodeGenerator) nextReg() llvm.Var {
-	cg.reg++
-	return llvm.Var("t" + strconv.Itoa(cg.reg))
-}
-
-func (cg *CodeGenerator) currentReg() string {
-	return "t" + strconv.Itoa(cg.reg)
-}
-
-func (cg *CodeGenerator) resetReg() {
-	cg.reg = 0
+	nameGen := &NameGenerator{}
+	return &CodeGenerator{env: env, write: writer, ng: nameGen}
 }
 
 func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
@@ -65,7 +52,8 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	defer cg.env.ExitContext()
 
 	for _, def := range prgm.Defs {
-		cg.resetReg()
+		cg.ng.resetReg()
+		cg.ng.resetLab()
 		if err := cg.compileDef(def); err != nil {
 			return err
 		}
@@ -116,7 +104,7 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		if err := cg.compileExp(s.Exp); err != nil {
 			return err
 		}
-		if err := cg.write.Ret(s.Type, llvm.Var(cg.currentReg())); err != nil {
+		if err := cg.write.Ret(s.Type, cg.ng.currentReg()); err != nil {
 			return err
 		}
 		return nil
@@ -133,8 +121,27 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) error {
 	switch e := exp.(type) {
 	case *tast.ParenExp:
 		return cg.compileExp(e.Exp)
+	case *tast.BoolExp:
+		return cg.write.Constant(
+			cg.ng.nextReg(),
+			types.Bool,
+			llvm.LitBool(e.Value),
+		)
 	case *tast.IntExp:
-		return cg.write.Constant(cg.nextReg(), types.Int, llvm.LitInt(e.Value))
+		return cg.write.Constant(
+			cg.ng.nextReg(),
+			types.Int,
+			llvm.LitInt(e.Value),
+		)
+	case *tast.DoubleExp:
+		return cg.write.Constant(
+			cg.ng.nextReg(),
+			types.Double,
+			llvm.LitDouble(e.Value),
+		)
+	case *tast.IdentExp:
+		// varName, ok := cg.env.LookupVar(e.Id)
+		return nil
 	default:
 		return fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
