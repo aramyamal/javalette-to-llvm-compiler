@@ -10,13 +10,22 @@ type LLVMWriter struct {
 	writer io.Writer
 }
 
-type Param struct {
+type FuncParam struct {
 	Type Type
 	Name Reg
 }
 
-func NewParam(typ Type, name string) Param {
-	return Param{Type: typ, Name: Reg(name)}
+func Param(typ Type, name string) FuncParam {
+	return FuncParam{Type: typ, Name: Reg(name)}
+}
+
+type FuncArg struct {
+	Type  Type
+	Value Value
+}
+
+func Arg(typ Type, value Value) FuncArg {
+	return FuncArg{Type: typ, Value: value}
 }
 
 func NewLLVMWriter(w io.Writer) *LLVMWriter {
@@ -54,7 +63,7 @@ func (w *LLVMWriter) Declare(
 func (w *LLVMWriter) StartDefine(
 	returns Type,
 	funcName Global,
-	inputs ...Param,
+	inputs ...FuncParam,
 ) error {
 	var llvmParams []string
 	for _, param := range inputs {
@@ -151,6 +160,34 @@ func (w *LLVMWriter) Load(des Reg, typ Type, ptr Reg) error {
 		"\t%s = load %s, %s* %s, align %d\n",
 		des.String(), llvmType, llvmType, ptr.String(), typ.alignment(),
 	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+// Call emits a function call. If typ is llvm.Void, des is ignored
+func (w *LLVMWriter) Call(
+	des Reg,
+	typ Type,
+	funcName Global,
+	args ...FuncArg,
+) error {
+	var argsStrs []string
+	for _, arg := range args {
+		argsStrs = append(argsStrs, arg.Type.String()+" "+arg.Value.String())
+	}
+	fmtArgs := strings.Join(argsStrs, ", ")
+	var llvmInstr string
+	if typ == Void {
+		llvmInstr = fmt.Sprintf(
+			"\tcall void %s(%s)\n",
+			funcName.String(), fmtArgs,
+		)
+	} else {
+		llvmInstr = fmt.Sprintf(
+			"\t%s = call %s %s(%s)\n",
+			des.String(), typ.String(), funcName.String(), fmtArgs,
+		)
+	}
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }

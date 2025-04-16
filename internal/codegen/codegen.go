@@ -141,12 +141,16 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 	switch e := exp.(type) {
 	case *tast.ParenExp:
 		return cg.compileExp(e.Exp)
+
 	case *tast.BoolExp:
 		return llvm.LitBool(e.Value), nil
+
 	case *tast.IntExp:
 		return llvm.LitInt(e.Value), nil
+
 	case *tast.DoubleExp:
 		return llvm.LitDouble(e.Value), nil
+
 	case *tast.StringExp:
 		des := cg.ng.nextReg()
 		glbVar, strLen := cg.ng.addString(e.Value)
@@ -169,6 +173,24 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 			)
 		}
 		return des, cg.write.Load(des, toLlvmType(e.Type()), reg)
+
+	case *tast.FuncExp:
+		var args []llvm.FuncArg
+		for _, exp := range e.Exps {
+			value, err := cg.compileExp(exp)
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, llvm.Arg(toLlvmType(exp.Type()), value))
+		}
+		des := cg.ng.nextReg()
+		return des, cg.write.Call(
+			des,
+			toLlvmType(e.Type()),
+			llvm.Global(e.Id),
+			args...,
+		)
+
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
@@ -191,12 +213,12 @@ func (cg *CodeGenerator) handleStrings() error {
 	return nil
 }
 
-func extractParams(args []tast.Arg) ([]llvm.Param, error) {
-	var params []llvm.Param
+func extractParams(args []tast.Arg) ([]llvm.FuncParam, error) {
+	var params []llvm.FuncParam
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case *tast.ParamArg:
-			params = append(params, llvm.NewParam(toLlvmType(a.Type()), a.Id))
+			params = append(params, llvm.Param(toLlvmType(a.Type()), a.Id))
 		default:
 			return nil, fmt.Errorf(
 				"extractParams: unhandled Arg type %T at %d:%d near '%s'",
