@@ -82,6 +82,22 @@ func (cg *CodeGenerator) compileDef(def tast.Def) error {
 		if err := cg.write.Label("entry"); err != nil {
 			return err
 		}
+		for _, param := range params {
+			param_ptr := llvm.Reg("." + string(param.Name) + "_ptr")
+			cg.env.ExtendVar(string(param.Name), param_ptr)
+
+			if err := cg.write.Alloca(param_ptr, param.Type); err != nil {
+				return err
+			}
+			if err := cg.write.Store(
+				param.Type,
+				param.Name,
+				param_ptr,
+			); err != nil {
+				return err
+			}
+
+		}
 		for _, stm := range d.Stms {
 			if err := cg.compileStm(stm); err != nil {
 				return err
@@ -121,19 +137,16 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	}
 }
 
-func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Reg, error) {
+func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 	switch e := exp.(type) {
 	case *tast.ParenExp:
 		return cg.compileExp(e.Exp)
 	case *tast.BoolExp:
-		des := cg.ng.nextReg()
-		return des, cg.write.Constant(des, llvm.I1, llvm.LitBool(e.Value))
+		return llvm.LitBool(e.Value), nil
 	case *tast.IntExp:
-		des := cg.ng.nextReg()
-		return des, cg.write.Constant(des, llvm.I32, llvm.LitInt(e.Value))
+		return llvm.LitInt(e.Value), nil
 	case *tast.DoubleExp:
-		des := cg.ng.nextReg()
-		return des, cg.write.Constant(des, llvm.Double, llvm.LitDouble(e.Value))
+		return llvm.LitDouble(e.Value), nil
 	case *tast.StringExp:
 		des := cg.ng.nextReg()
 		glbVar, strLen := cg.ng.addString(e.Value)
@@ -148,7 +161,7 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Reg, error) {
 		des := cg.ng.nextReg()
 		reg, ok := cg.env.LookupVar(e.Id)
 		if !ok {
-			return "", fmt.Errorf(
+			return nil, fmt.Errorf(
 				"internal compiler error: undefined variable '%s' encountered"+
 					"during code generation at %d:%d near '%s'. "+
 					"This should have been caught during type checking.",
@@ -157,7 +170,7 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Reg, error) {
 		}
 		return des, cg.write.Load(des, toLlvmType(e.Type()), reg)
 	default:
-		return "", fmt.Errorf(
+		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
 			e, e.Line(), e.Col(), e.Text(),
 		)

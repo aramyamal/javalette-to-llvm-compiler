@@ -92,16 +92,6 @@ func (w *LLVMWriter) Ret(typ Type, val Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Load(des Reg, typ Type, from Reg) error {
-	llvmType := typ.String()
-	llvmInstr := fmt.Sprintf(
-		"\t%s = load %s, %s* %s, align %d\n",
-		des.String(), llvmType, llvmType, from.String(), typ.alignment(),
-	)
-	_, err := w.writer.Write([]byte(llvmInstr))
-	return err
-}
-
 func (w *LLVMWriter) Constant(des Reg, typ Type, lit Value) error {
 	llvmInstr := fmt.Sprintf(
 		"\t%s = %s %s\n",
@@ -134,6 +124,32 @@ func (w *LLVMWriter) InternalConstant(name Global, typ Type, val Value) error {
 	llvmInstr := fmt.Sprintf(
 		"%s = internal constant %s %s\n",
 		name.String(), typ.String(), val.String(),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Alloca(des Reg, typ Type) error {
+	llvmInstr := fmt.Sprintf("\t%s = alloca %s\n", des.String(), typ.String())
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Store(typ Type, value Value, ptr Reg) error {
+	llvmType := typ.String()
+	llvmInstr := fmt.Sprintf(
+		"\tstore %s %s, %s* %s\n",
+		llvmType, value.String(), llvmType, ptr.String(),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Load(des Reg, typ Type, ptr Reg) error {
+	llvmType := typ.String()
+	llvmInstr := fmt.Sprintf(
+		"\t%s = load %s, %s* %s, align %d\n",
+		des.String(), llvmType, llvmType, ptr.String(), typ.alignment(),
 	)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
