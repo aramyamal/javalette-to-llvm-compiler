@@ -18,7 +18,7 @@ func (tc *TypeChecker) checkStm(stm parser.IStmContext) (tast.Stm, error) {
 	case *parser.ReturnStmContext:
 		return tc.checkReturnStm(s, line, col, text)
 	case *parser.VoidReturnStmContext:
-		return tc.checkVoidReturnStm(s, line, col, text)
+		return tc.checkVoidReturnStm(line, col, text)
 	case *parser.WhileStmContext:
 		return tc.checkWhileStm(s, line, col, text)
 	case *parser.BlockStmContext:
@@ -26,7 +26,7 @@ func (tc *TypeChecker) checkStm(stm parser.IStmContext) (tast.Stm, error) {
 	case *parser.IfStmContext:
 		return tc.checkIfStm(s, line, col, text)
 	case *parser.BlankStmContext:
-		return tc.checkBlankStm(s, line, col, text)
+		return tast.NewBlankStm(line, col, text), nil
 	default:
 		return nil, fmt.Errorf(
 			"checkStm: unhandled stm type %T at %d:%d near '%s'",
@@ -99,7 +99,7 @@ func (tc *TypeChecker) checkReturnStm(
 }
 
 func (tc *TypeChecker) checkVoidReturnStm(
-	s *parser.VoidReturnStmContext, line, col int, text string,
+	line, col int, text string,
 ) (*tast.VoidReturnStm, error) {
 	returnType := tc.env.ReturnType()
 	if isConvertible(returnType, types.Void) {
@@ -180,10 +180,4 @@ func (tc *TypeChecker) checkIfStm(
 		tc.env.ExitContext()
 	}
 	return tast.NewIfStm(typedExp, thenStm, elseStm, line, col, text), nil
-}
-
-func (tc *TypeChecker) checkBlankStm(
-	s *parser.BlankStmContext, line, col int, text string,
-) (*tast.BlankStm, error) {
-	return tast.NewBlankStm(line, col, text), nil
 }
