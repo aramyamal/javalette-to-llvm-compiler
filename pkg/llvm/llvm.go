@@ -192,18 +192,42 @@ func (w *LLVMWriter) Call(
 	return err
 }
 
-func (w *LLVMWriter) Add(typ Type, des Reg, lhs, rhs Value) error {
+func (w *LLVMWriter) Sub(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
 	case I32:
 		llvmInstr = fmt.Sprintf(
-			"%s = add i32 %s, %s\n",
+			"\t%s = sub i32 %s, %s\n",
 			des.String(), lhs.String(), rhs.String(),
 		)
 	case Double:
 		llvmInstr = fmt.Sprintf(
-			"%s = fadd double %s, %s\n",
+			"\t%s = fsub double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'sub'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Add(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = add i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fadd double %s, %s\n",
 			des.String(), lhs.String(), rhs.String(),
 		)
 	default:

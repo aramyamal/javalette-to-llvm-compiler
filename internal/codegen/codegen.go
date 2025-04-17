@@ -191,6 +191,27 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 			args...,
 		)
 
+	case *tast.NegExp:
+		value, err := cg.compileExp(e.Exp)
+		if err != nil {
+			return nil, err
+		}
+		des := cg.ng.nextReg()
+		llvmType := toLlvmType(e.Type())
+		switch llvmType {
+		case llvm.I32:
+			return des, cg.write.Sub(des, llvmType, llvm.LitInt(0), value)
+		case llvm.Double:
+			return des, cg.write.Sub(des, llvmType, llvm.LitDouble(0.0), value)
+		default:
+			return nil, fmt.Errorf(
+				"internal compiler error: unable to negate expression "+
+					"during code generation at %d:%d near '%s'. "+
+					"This should have been caught during type checking.",
+				e.Line(), e.Col(), e.Text(),
+			)
+		}
+
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
