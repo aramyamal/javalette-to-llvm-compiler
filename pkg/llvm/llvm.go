@@ -95,8 +95,16 @@ func (w *LLVMWriter) Label(name string) error {
 	return w.Block(name)
 }
 
-func (w *LLVMWriter) Ret(typ Type, val Value) error {
-	llvmInstr := fmt.Sprintf("\tret %s %s\n", typ.String(), val.String())
+func (w *LLVMWriter) Ret(typ Type, val ...Value) error {
+	var llvmInstr string
+	if typ == Void {
+		llvmInstr = "\tret void\n"
+	} else {
+		if len(val) == 0 {
+			return fmt.Errorf("Ret: non-void return type requires a value")
+		}
+		llvmInstr = fmt.Sprintf("\tret %s %s\n", typ.String(), val[0].String())
+	}
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }

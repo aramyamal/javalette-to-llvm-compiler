@@ -161,6 +161,9 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		}
 		return nil
 
+	case *tast.VoidReturnStm:
+		return cg.write.Ret(llvm.Void)
+
 	default:
 		return fmt.Errorf(
 			"compileStm: unhandled stm type %T at %d:%d near '%s'",
