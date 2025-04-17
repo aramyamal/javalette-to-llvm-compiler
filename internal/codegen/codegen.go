@@ -211,6 +211,13 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 				e.Line(), e.Col(), e.Text(),
 			)
 		}
+	case *tast.NotExp:
+		value, err := cg.compileExp(e.Exp)
+		if err != nil {
+			return nil, err
+		}
+		des := cg.ng.nextReg()
+		return des, cg.write.Xor(des, llvm.I1, value, llvm.LitBool(true))
 
 	default:
 		return nil, fmt.Errorf(

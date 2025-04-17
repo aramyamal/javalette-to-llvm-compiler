@@ -239,3 +239,12 @@ func (w *LLVMWriter) Add(des Reg, typ Type, lhs, rhs Value) error {
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
+
+func (w *LLVMWriter) Xor(des Reg, typ Type, lhs, rhs Value) error {
+	llvmInstr := fmt.Sprintf(
+		"\t%s = xor %s %s, %s\n",
+		des.String(), typ.String(), lhs.String(), rhs.String(),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
