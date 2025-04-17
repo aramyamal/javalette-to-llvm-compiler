@@ -119,6 +119,41 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 			return err
 		}
 		return nil
+
+	case *tast.DeclsStm:
+		for _, item := range s.Items {
+			llvmType := toLlvmType(item.Type())
+			switch i := item.(type) {
+			case *tast.NoInitItem:
+				var_ptr := llvm.Reg("." + string(i.Id) + "_ptr")
+				cg.env.ExtendVar(string(i.Id), var_ptr)
+
+				if err := cg.write.Alloca(var_ptr, llvmType); err != nil {
+					return err
+				}
+			case *tast.InitItem:
+				value, err := cg.compileExp(i.Exp)
+				if err != nil {
+					return err
+				}
+
+				var_ptr := llvm.Reg("." + string(i.Id) + "_ptr")
+				cg.env.ExtendVar(string(i.Id), var_ptr)
+
+				if err := cg.write.Alloca(var_ptr, llvmType); err != nil {
+					return err
+				}
+				if err := cg.write.Store(
+					llvmType,
+					value,
+					var_ptr,
+				); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+
 	case *tast.ReturnStm:
 		reg, err := cg.compileExp(s.Exp)
 		if err != nil {
