@@ -1,13 +1,11 @@
 package codegen
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 type CodeGenerator struct {
@@ -97,4 +95,3 @@ func (cg *CodeGenerator) handleStrings() error {
 	cg.ng.resetStrings()
 	return nil
 }
-
