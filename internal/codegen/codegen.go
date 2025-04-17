@@ -83,20 +83,13 @@ func (cg *CodeGenerator) compileDef(def tast.Def) error {
 			return err
 		}
 		for _, param := range params {
-			param_ptr := llvm.Reg("." + string(param.Name) + "_ptr")
-			cg.env.ExtendVar(string(param.Name), param_ptr)
-
-			if err := cg.write.Alloca(param_ptr, param.Type); err != nil {
-				return err
-			}
-			if err := cg.write.Store(
+			if err := cg.emitVarAlloc(
+				string(param.Name),
 				param.Type,
 				param.Name,
-				param_ptr,
 			); err != nil {
 				return err
 			}
-
 		}
 		for _, stm := range d.Stms {
 			if err := cg.compileStm(stm); err != nil {
@@ -112,6 +105,24 @@ func (cg *CodeGenerator) compileDef(def tast.Def) error {
 	}
 }
 
+func (cg *CodeGenerator) emitVarAlloc(
+	name string,
+	typ llvm.Type,
+	init ...llvm.Value,
+) error {
+	varPtr := llvm.Reg("." + name + "_ptr")
+	cg.env.ExtendVar(name, varPtr)
+	if err := cg.write.Alloca(varPtr, typ); err != nil {
+		return err
+	}
+	if len(init) > 0 && init[0] != nil {
+		if err := cg.write.Store(typ, init[0], varPtr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	switch s := stm.(type) {
 	case *tast.ExpStm:
@@ -125,10 +136,7 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 			llvmType := toLlvmType(item.Type())
 			switch i := item.(type) {
 			case *tast.NoInitItem:
-				var_ptr := llvm.Reg("." + string(i.Id) + "_ptr")
-				cg.env.ExtendVar(string(i.Id), var_ptr)
-
-				if err := cg.write.Alloca(var_ptr, llvmType); err != nil {
+				if err := cg.emitVarAlloc(i.Id, llvmType); err != nil {
 					return err
 				}
 			case *tast.InitItem:
@@ -136,18 +144,7 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 				if err != nil {
 					return err
 				}
-
-				var_ptr := llvm.Reg("." + string(i.Id) + "_ptr")
-				cg.env.ExtendVar(string(i.Id), var_ptr)
-
-				if err := cg.write.Alloca(var_ptr, llvmType); err != nil {
-					return err
-				}
-				if err := cg.write.Store(
-					llvmType,
-					value,
-					var_ptr,
-				); err != nil {
+				if err := cg.emitVarAlloc(i.Id, llvmType, value); err != nil {
 					return err
 				}
 			}
