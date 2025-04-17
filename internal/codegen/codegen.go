@@ -7,6 +7,7 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 type CodeGenerator struct {
@@ -254,6 +255,84 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 		}
 		des := cg.ng.nextReg()
 		return des, cg.write.Xor(des, llvm.I1, value, llvm.LitBool(true))
+
+	case *tast.PostExp:
+
+		ptrName, ok := cg.env.LookupVar(e.Id)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: undefined variable '%s' encountered"+
+					"during code generation at %d:%d near '%s'. "+
+					"This should have been caught during type checking.",
+				e.Id, e.Line(), e.Col(), e.Text(),
+			)
+		}
+		orig := cg.ng.nextReg()
+		typ := toLlvmType(e.Type())
+		if err := cg.write.Load(orig, typ, ptrName); err != nil {
+			return nil, err
+		}
+		incrm := cg.ng.nextReg()
+
+		switch e.Op {
+		case types.OpInc:
+			if err := cg.write.Add(incrm, typ, llvm.LitInt(1), orig); err != nil {
+				return nil, err
+			}
+		case types.OpDec:
+			if err := cg.write.Sub(incrm, typ, llvm.LitInt(1), orig); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf(
+				"compileExp->PostExp: unhandled op type '%v' at %d:%d near '%s'",
+				e.Op.Name(), e.Line(), e.Col(), e.Text(),
+			)
+
+		}
+		if err := cg.write.Store(typ, incrm, ptrName); err != nil {
+			return nil, err
+		}
+		return orig, nil
+
+	case *tast.PreExp:
+
+		ptrName, ok := cg.env.LookupVar(e.Id)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: undefined variable '%s' encountered"+
+					"during code generation at %d:%d near '%s'. "+
+					"This should have been caught during type checking.",
+				e.Id, e.Line(), e.Col(), e.Text(),
+			)
+		}
+		orig := cg.ng.nextReg()
+		typ := toLlvmType(e.Type())
+		if err := cg.write.Load(orig, typ, ptrName); err != nil {
+			return nil, err
+		}
+		incrm := cg.ng.nextReg()
+
+		switch e.Op {
+		case types.OpInc:
+			if err := cg.write.Add(incrm, typ, llvm.LitInt(1), orig); err != nil {
+				return nil, err
+			}
+		case types.OpDec:
+			if err := cg.write.Sub(incrm, typ, llvm.LitInt(1), orig); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf(
+				"compileExp->PostExp: unhandled op type '%v' at %d:%d near '%s'",
+				e.Op.Name(), e.Line(), e.Col(), e.Text(),
+			)
+
+		}
+		if err := cg.write.Store(typ, incrm, ptrName); err != nil {
+			return nil, err
+		}
+		return incrm, nil
 
 	default:
 		return nil, fmt.Errorf(

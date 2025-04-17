@@ -57,3 +57,21 @@ func (op Op) String() string {
 		"!=", // Ne
 	}[op]
 }
+
+func (op Op) Name() string {
+	return [...]string{
+		"OpInc",
+		"OpDec",
+		"OpMul",
+		"OpDiv",
+		"OpMod",
+		"OpAdd",
+		"OpSub",
+		"OpLt",
+		"OpGt",
+		"OpLe",
+		"OpGe",
+		"OpEq",
+		"OpNe",
+	}[op]
+}

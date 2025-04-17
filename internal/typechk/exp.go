@@ -166,7 +166,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		}
 		if typ != types.Int { //&& typ != tast.Double {
 			return nil, fmt.Errorf(
-				"'++' or '--' operation can only be done on int or double at "+
+				// "'++' or '--' operation can only be done on int or double at "+
+				"'++' or '--' operation can only be done on int at "+
 					"%d:%d near '%s'",
 				line, col, text,
 			)
