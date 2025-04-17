@@ -50,6 +50,7 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	for _, def := range prgm.Defs {
 		cg.ng.resetReg()
 		cg.ng.resetLab()
+		cg.ng.resetPtrs()
 
 		if err := cg.write.Newline(); err != nil {
 			return err
@@ -110,7 +111,7 @@ func (cg *CodeGenerator) emitVarAlloc(
 	typ llvm.Type,
 	init ...llvm.Value,
 ) error {
-	varPtr := llvm.Reg("." + name + "_ptr")
+	varPtr := cg.ng.ptrName(name)
 	cg.env.ExtendVar(name, varPtr)
 	if err := cg.write.Alloca(varPtr, typ); err != nil {
 		return err

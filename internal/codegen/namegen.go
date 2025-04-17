@@ -11,6 +11,7 @@ type NameGenerator struct {
 	lab    int
 	strIdx int
 	strMap map[llvm.Global]llvm.LitString
+	ptrMap map[string]int
 }
 
 func NewNameGenerator() *NameGenerator {
@@ -19,6 +20,7 @@ func NewNameGenerator() *NameGenerator {
 		lab:    0,
 		strIdx: 0,
 		strMap: make(map[llvm.Global]llvm.LitString),
+		ptrMap: make(map[string]int),
 	}
 }
 
@@ -27,6 +29,18 @@ func (ng *NameGenerator) addString(content string) (llvm.Global, int) {
 	ng.strIdx++
 	ng.strMap[name] = llvm.LitString(content)
 	return llvm.Global(name), len(content) + 1
+}
+
+func (ng *NameGenerator) ptrName(name string) llvm.Reg {
+	ptrCount := ng.ptrMap[name]
+	if ptrCount == 0 {
+		return llvm.Reg(fmt.Sprintf(".%s_ptr", name))
+	}
+	return llvm.Reg(fmt.Sprintf(".%s_%dptr", name, ptrCount))
+}
+
+func (ng *NameGenerator) resetPtrs() {
+	ng.ptrMap = make(map[string]int)
 }
 
 func (ng *NameGenerator) resetStrings() {
