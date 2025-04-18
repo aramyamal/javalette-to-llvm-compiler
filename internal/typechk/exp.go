@@ -442,7 +442,7 @@ func (tc *TypeChecker) inferCmpExp(
 				line, col, text,
 			)
 		}
-		op = types.OpLt
+		op = types.OpLe
 	case *parser.GTEContext:
 		if leftType == types.Bool || rightType == types.Bool {
 			return nil, fmt.Errorf(
@@ -450,7 +450,7 @@ func (tc *TypeChecker) inferCmpExp(
 				line, col, text,
 			)
 		}
-		op = types.OpGt
+		op = types.OpGe
 	case *parser.EquContext:
 		if (leftType == types.Bool) != (rightType == types.Bool) {
 			return nil, fmt.Errorf(
