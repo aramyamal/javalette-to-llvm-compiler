@@ -38,6 +38,10 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 		return cg.compileAddExp(e)
 	case *tast.CmpExp:
 		return cg.compileCmpExp(e)
+	case *tast.AndExp:
+		return cg.compileAndExp(e)
+	case *tast.OrExp:
+		return cg.compileOrExp(e)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
@@ -321,4 +325,98 @@ func (cg *CodeGenerator) compileCmpExp(e *tast.CmpExp) (llvm.Value, error) {
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 	}
+}
+
+func (cg *CodeGenerator) compileAndExp(e *tast.AndExp) (llvm.Value, error) {
+	llvmType := toLlvmType(e.Type())
+	lhs, err := cg.compileExp(e.LeftExp)
+	if err != nil {
+		return nil, err
+	}
+	falseLab := cg.ng.nextLab()
+	evalLab := cg.ng.nextLab()
+	endLab := cg.ng.nextLab()
+
+	if err := cg.write.BrIf(llvmType, lhs, evalLab, falseLab); err != nil {
+		return nil, err
+	}
+
+	if err := cg.write.Label(evalLab); err != nil {
+		return nil, err
+	}
+	rhs, err := cg.compileExp(e.RightExp)
+	if err != nil {
+		return nil, err
+	}
+	if err := cg.write.Br(endLab); err != nil {
+		return nil, err
+	}
+
+	if err := cg.write.Label(falseLab); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Br(endLab); err != nil {
+		return nil, err
+	}
+
+	des := cg.ng.nextReg()
+	if err := cg.write.Label(endLab); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Phi(
+		des,
+		llvmType,
+		llvm.Phi(llvm.LitBool(false), falseLab),
+		llvm.Phi(rhs, evalLab),
+	); err != nil {
+		return nil, err
+	}
+	return des, nil
+}
+
+func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvm.Value, error) {
+	llvmType := toLlvmType(e.Type())
+	lhs, err := cg.compileExp(e.LeftExp)
+	if err != nil {
+		return nil, err
+	}
+	trueLab := cg.ng.nextLab()
+	evalLab := cg.ng.nextLab()
+	endLab := cg.ng.nextLab()
+
+	if err := cg.write.BrIf(llvmType, lhs, trueLab, evalLab); err != nil {
+		return nil, err
+	}
+
+	if err := cg.write.Label(evalLab); err != nil {
+		return nil, err
+	}
+	rhs, err := cg.compileExp(e.RightExp)
+	if err != nil {
+		return nil, err
+	}
+	if err := cg.write.Br(endLab); err != nil {
+		return nil, err
+	}
+
+	if err := cg.write.Label(trueLab); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Br(endLab); err != nil {
+		return nil, err
+	}
+
+	des := cg.ng.nextReg()
+	if err := cg.write.Label(endLab); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Phi(
+		des,
+		llvmType,
+		llvm.Phi(llvm.LitBool(true), trueLab),
+		llvm.Phi(rhs, evalLab),
+	); err != nil {
+		return nil, err
+	}
+	return des, nil
 }

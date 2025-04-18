@@ -28,6 +28,15 @@ func Arg(typ Type, value Value) FuncArg {
 	return FuncArg{Type: typ, Value: value}
 }
 
+type PhiPair struct {
+	Val   Value
+	Label string
+}
+
+func Phi(val Value, lab string) PhiPair {
+	return PhiPair{Val: val, Label: lab}
+}
+
 func NewLLVMWriter(w io.Writer) *LLVMWriter {
 	return &LLVMWriter{writer: w}
 }
@@ -86,13 +95,57 @@ func (w *LLVMWriter) EndDefine() error {
 }
 
 func (w *LLVMWriter) Block(name string) error {
-	llvmInstr := fmt.Sprintf("%s:\n", name)
+	llvmInstr := fmt.Sprintf("\n%s:\n", name)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
 
 func (w *LLVMWriter) Label(name string) error {
 	return w.Block(name)
+}
+
+func (w *LLVMWriter) Br(label string) error {
+	llvmInstr := fmt.Sprintf("\tbr label %s", label)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) BrIf(
+	typ Type,
+	cond Value,
+	iftrue string,
+	iffalse string,
+) error {
+	if !(typ != I1) {
+		return fmt.Errorf("Br: cannot branch on non-boolean values")
+	}
+	llvmInstr := fmt.Sprintf(
+		"\tbr i1 %s, label %s, label %s\n", cond.String(), iftrue, iffalse,
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Phi(
+	des Reg,
+	typ Type,
+	phiPairs ...PhiPair,
+) error {
+	if len(phiPairs) == 0 {
+		return fmt.Errorf("Phi: must have at least one incoming value")
+	}
+	var froms []string
+	for _, phiPair := range phiPairs {
+		froms = append(froms,
+			fmt.Sprintf("[ %s, %%%s ]", phiPair.Val.String(), phiPair.Label),
+		)
+	}
+	llvmInstr := fmt.Sprintf(
+		"\t%s = phi %s %s\n",
+		des.String(), typ.String(), strings.Join(froms, ", "),
+	)
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
 }
 
 func (w *LLVMWriter) Ret(typ Type, val ...Value) error {
