@@ -146,11 +146,11 @@ func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (llvm.Value, error) {
 
 	switch e.Op {
 	case types.OpInc:
-		if err := cg.write.Add(incrm, typ, llvm.LitInt(1), orig); err != nil {
+		if err := cg.write.Add(incrm, typ, orig, llvm.LitInt(1)); err != nil {
 			return nil, err
 		}
 	case types.OpDec:
-		if err := cg.write.Sub(incrm, typ, llvm.LitInt(1), orig); err != nil {
+		if err := cg.write.Sub(incrm, typ, orig, llvm.LitInt(1)); err != nil {
 			return nil, err
 		}
 	default:
@@ -185,11 +185,11 @@ func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvm.Value, error) {
 
 	switch e.Op {
 	case types.OpInc:
-		if err := cg.write.Add(incrm, typ, llvm.LitInt(1), orig); err != nil {
+		if err := cg.write.Add(incrm, typ, orig, llvm.LitInt(1)); err != nil {
 			return nil, err
 		}
 	case types.OpDec:
-		if err := cg.write.Sub(incrm, typ, llvm.LitInt(1), orig); err != nil {
+		if err := cg.write.Sub(incrm, typ, orig, llvm.LitInt(1)); err != nil {
 			return nil, err
 		}
 	default:
