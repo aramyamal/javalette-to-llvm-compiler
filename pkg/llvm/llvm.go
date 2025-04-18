@@ -248,6 +248,78 @@ func (w *LLVMWriter) Add(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
+func (w *LLVMWriter) Mul(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = mul i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fmul double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'mul'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Div(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = sdiv i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fdiv double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'div'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) Rem(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = srem i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = frem double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'div'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
 func (w *LLVMWriter) Xor(des Reg, typ Type, lhs, rhs Value) error {
 	llvmInstr := fmt.Sprintf(
 		"\t%s = xor %s %s, %s\n",

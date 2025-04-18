@@ -32,6 +32,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 		return cg.compilePostExp(e)
 	case *tast.PreExp:
 		return cg.compilePreExp(e)
+	case *tast.MulExp:
+		return cg.compileMulExp(e)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
@@ -41,8 +43,7 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 }
 
 func (cg *CodeGenerator) compileStringExp(
-	e *tast.StringExp,
-) (llvm.Value, error) {
+	e *tast.StringExp) (llvm.Value, error) {
 	des := cg.ng.nextReg()
 	glbVar, strLen := cg.ng.addString(e.Value)
 	return des, cg.write.GetElementPtr(
@@ -53,9 +54,7 @@ func (cg *CodeGenerator) compileStringExp(
 	)
 }
 
-func (cg *CodeGenerator) compileIdentExp(
-	e *tast.IdentExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compileIdentExp(e *tast.IdentExp) (llvm.Value, error) {
 	des := cg.ng.nextReg()
 	reg, ok := cg.env.LookupVar(e.Id)
 	if !ok {
@@ -69,9 +68,7 @@ func (cg *CodeGenerator) compileIdentExp(
 	return des, cg.write.Load(des, toLlvmType(e.Type()), reg)
 }
 
-func (cg *CodeGenerator) compileFuncExp(
-	e *tast.FuncExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (llvm.Value, error) {
 	var args []llvm.FuncArg
 	for _, exp := range e.Exps {
 		value, err := cg.compileExp(exp)
@@ -89,9 +86,7 @@ func (cg *CodeGenerator) compileFuncExp(
 	)
 }
 
-func (cg *CodeGenerator) compileNegExp(
-	e *tast.NegExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compileNegExp(e *tast.NegExp) (llvm.Value, error) {
 	value, err := cg.compileExp(e.Exp)
 	if err != nil {
 		return nil, err
@@ -113,9 +108,7 @@ func (cg *CodeGenerator) compileNegExp(
 	}
 }
 
-func (cg *CodeGenerator) compileNotExp(
-	e *tast.NotExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compileNotExp(e *tast.NotExp) (llvm.Value, error) {
 	value, err := cg.compileExp(e.Exp)
 	if err != nil {
 		return nil, err
@@ -124,9 +117,7 @@ func (cg *CodeGenerator) compileNotExp(
 	return des, cg.write.Xor(des, llvm.I1, value, llvm.LitBool(true))
 }
 
-func (cg *CodeGenerator) compilePostExp(
-	e *tast.PostExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (llvm.Value, error) {
 	ptrName, ok := cg.env.LookupVar(e.Id)
 	if !ok {
 		return nil, fmt.Errorf(
@@ -165,9 +156,7 @@ func (cg *CodeGenerator) compilePostExp(
 	return orig, nil
 }
 
-func (cg *CodeGenerator) compilePreExp(
-	e *tast.PreExp,
-) (llvm.Value, error) {
+func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvm.Value, error) {
 	ptrName, ok := cg.env.LookupVar(e.Id)
 	if !ok {
 		return nil, fmt.Errorf(
@@ -204,4 +193,38 @@ func (cg *CodeGenerator) compilePreExp(
 		return nil, err
 	}
 	return incrm, nil
+}
+
+func (cg *CodeGenerator) compileMulExp(e *tast.MulExp) (llvm.Value, error) {
+	lhs, err := cg.compileExp(e.LeftExp)
+	if err != nil {
+		return nil, err
+	}
+	rhs, err := cg.compileExp(e.RightExp)
+	if err != nil {
+		return nil, err
+	}
+	des := cg.ng.nextReg()
+	switch e.Op {
+	case types.OpMul:
+		if err := cg.write.Mul(des, toLlvmType(e.Type()), lhs, rhs); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpDiv:
+		if err := cg.write.Div(des, toLlvmType(e.Type()), lhs, rhs); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpMod:
+		if err := cg.write.Rem(des, toLlvmType(e.Type()), lhs, rhs); err != nil {
+			return nil, err
+		}
+		return des, nil
+	default:
+		return nil, fmt.Errorf(
+			"compileExp->MulExp: unhandled op type '%v' at %d:%d near '%s'",
+			e.Op.Name(), e.Line(), e.Col(), e.Text(),
+		)
+	}
 }

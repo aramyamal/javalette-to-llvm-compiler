@@ -46,7 +46,7 @@ func (op Op) String() string {
 		"--", // Dec
 		"*",  // Mul
 		"/",  // Div
-		"*",  // Mod
+		"%",  // Mod
 		"+",  // Add
 		"-",  // Sub
 		"<",  // Lt
