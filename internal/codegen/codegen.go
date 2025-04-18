@@ -165,11 +165,11 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Reg, error) {
 }
 
 func (cg *CodeGenerator) handleStrings() error {
-	if err := cg.write.Newline(); err != nil {
-		return err
-	}
 	for name, str := range cg.ng.strMap {
 		typ := llvm.Array(llvm.I8, len(str)+1)
+		if err := cg.write.Newline(); err != nil {
+			return err
+		}
 		if err := cg.write.InternalConstant(name, typ, str); err != nil {
 			return err
 		}

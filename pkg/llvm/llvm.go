@@ -72,7 +72,7 @@ func (w *LLVMWriter) StartDefine(
 }
 
 func (w *LLVMWriter) EndDefine() error {
-	_, err := w.writer.Write([]byte("}\n\n"))
+	_, err := w.writer.Write([]byte("}\n"))
 	return err
 }
 
