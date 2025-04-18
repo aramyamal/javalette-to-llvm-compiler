@@ -328,3 +328,151 @@ func (w *LLVMWriter) Xor(des Reg, typ Type, lhs, rhs Value) error {
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
+
+func (w *LLVMWriter) CmpLt(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp slt i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp olt double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp lt'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) CmpLe(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp sle i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp ole double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp le'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) CmpGt(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp sgt i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp ogt double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp gt'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp sge i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp oge double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp ge'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I1:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp eq i1 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp eq i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp oeq double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp eq'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *LLVMWriter) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
+	var llvmInstr string
+	switch typ {
+	case I1:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp ne i1 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case I32:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = icmp ne i32 %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	case Double:
+		llvmInstr = fmt.Sprintf(
+			"\t%s = fcmp one double %s, %s\n",
+			des.String(), lhs.String(), rhs.String(),
+		)
+	default:
+		return fmt.Errorf(
+			"unsupported type '%s' for LLVM instruction 'cmp ne'",
+			typ.String(),
+		)
+	}
+	_, err := w.writer.Write([]byte(llvmInstr))
+	return err
+}

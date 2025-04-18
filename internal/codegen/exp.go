@@ -36,6 +36,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 		return cg.compileMulExp(e)
 	case *tast.AddExp:
 		return cg.compileAddExp(e)
+	case *tast.CmpExp:
+		return cg.compileCmpExp(e)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
@@ -255,6 +257,67 @@ func (cg *CodeGenerator) compileAddExp(e *tast.AddExp) (llvm.Value, error) {
 	default:
 		return nil, fmt.Errorf(
 			"compileExp->AddExp: unhandled op type '%v' at %d:%d near '%s'",
+			e.Op.Name(), e.Line(), e.Col(), e.Text(),
+		)
+	}
+}
+
+func (cg *CodeGenerator) compileCmpExp(e *tast.CmpExp) (llvm.Value, error) {
+	lhs, err := cg.compileExp(e.LeftExp)
+	if err != nil {
+		return nil, err
+	}
+	rhs, err := cg.compileExp(e.RightExp)
+	if err != nil {
+		return nil, err
+	}
+	des := cg.ng.nextReg()
+	switch e.Op {
+	case types.OpLt:
+		if err := cg.write.CmpLt(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpGt:
+		if err := cg.write.CmpGt(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpLe:
+		if err := cg.write.CmpLe(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpGe:
+		if err := cg.write.CmpGe(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpEq:
+		if err := cg.write.CmpEq(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	case types.OpNe:
+		if err := cg.write.CmpNe(
+			des, toLlvmType(e.LeftExp.Type()), lhs, rhs,
+		); err != nil {
+			return nil, err
+		}
+		return des, nil
+	default:
+		return nil, fmt.Errorf(
+			"compileExp->CmpExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 	}
