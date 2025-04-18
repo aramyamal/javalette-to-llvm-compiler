@@ -5,6 +5,7 @@ import "fmt"
 type Type interface {
 	String() string
 	alignment() int
+	ZeroValue() Value
 }
 
 type PrimitiveType int
@@ -52,7 +53,26 @@ func (t PrimitiveType) alignment() int {
 	case Void:
 		panic("void type does not have alignment")
 	default:
-		panic(fmt.Sprintf("unsupported type: %d", t))
+		panic(fmt.Sprintf("unsupported alignment of type: %d", t))
+	}
+}
+
+func (t PrimitiveType) ZeroValue() Value {
+	switch t {
+	case I32:
+		return LitInt(0)
+	case Double:
+		return LitDouble(0.0)
+	case I8:
+		return LitInt(0)
+	case I8Ptr:
+		panic("I8 pointer type does not have zero value")
+	case I1:
+		return LitBool(false)
+	case Void:
+		panic("void type does not have zero value")
+	default:
+		panic(fmt.Sprintf("unsupported zero value of type: %d", t))
 	}
 }
 
@@ -78,4 +98,8 @@ func (t ArrayType) String() string {
 
 func (t ArrayType) alignment() int {
 	return t.typ.alignment()
+}
+
+func (t ArrayType) ZeroValue() Value {
+	panic("zero value of array not yet implemented")
 }

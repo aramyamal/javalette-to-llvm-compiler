@@ -41,7 +41,10 @@ func (cg *CodeGenerator) compileDeclsStm(
 		llvmType := toLlvmType(item.Type())
 		switch i := item.(type) {
 		case *tast.NoInitItem:
-			if err := cg.emitVarAlloc(i.Id, llvmType); err != nil {
+			if err := cg.emitVarAlloc(
+				i.Id, llvmType,
+				llvmType.ZeroValue(),
+			); err != nil {
 				return err
 			}
 		case *tast.InitItem:
