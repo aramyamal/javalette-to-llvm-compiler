@@ -42,6 +42,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvm.Value, error) {
 		return cg.compileAndExp(e)
 	case *tast.OrExp:
 		return cg.compileOrExp(e)
+	case *tast.AssignExp:
+		return cg.compileAssignExp(e)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
@@ -419,4 +421,26 @@ func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvm.Value, error) {
 		return nil, err
 	}
 	return des, nil
+}
+
+func (cg *CodeGenerator) compileAssignExp(
+	e *tast.AssignExp,
+) (llvm.Value, error) {
+	ptr, ok := cg.env.LookupVar(e.Id)
+	if !ok {
+		return nil, fmt.Errorf(
+			"internal compiler error: undefined variable '%s' encountered"+
+				"during code generation at %d:%d near '%s'. "+
+				"This should have been caught during type checking.",
+			e.Id, e.Line(), e.Col(), e.Text(),
+		)
+	}
+	value, err := cg.compileExp(e.Exp)
+	if err != nil {
+		return nil, err
+	}
+	if err := cg.write.Store(toLlvmType(e.Type()), value, ptr); err != nil {
+		return nil, err
+	}
+	return value, nil
 }
