@@ -1,6 +1,9 @@
 package llvm
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 type Value interface {
 	String() string
@@ -27,7 +30,11 @@ func (l LitInt) String() string {
 type LitDouble float64
 
 func (l LitDouble) String() string {
-	return strconv.FormatFloat(float64(l), 'f', -1, 64)
+	llvmString := strconv.FormatFloat(float64(l), 'f', -1, 64)
+	if !strings.Contains(llvmString, ".") {
+		llvmString += ".0"
+	}
+	return llvmString
 }
 
 type LitBool bool
