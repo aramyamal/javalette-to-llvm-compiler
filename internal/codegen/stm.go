@@ -78,6 +78,9 @@ func (cg *CodeGenerator) compileWhileStm(s *tast.WhileStm) error {
 	conditionLab := cg.ng.nextLab()
 	bodyLab := cg.ng.nextLab()
 	endLab := cg.ng.nextLab()
+	if err := cg.write.Br(conditionLab); err != nil {
+		return err
+	}
 	if err := cg.write.Label(conditionLab); err != nil {
 		return err
 	}
