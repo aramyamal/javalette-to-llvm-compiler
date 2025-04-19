@@ -47,6 +47,8 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	defer cg.env.ExitContext()
 
 	for _, def := range prgm.Defs {
+		cg.env.EnterContext()
+
 		cg.ng.resetReg()
 		cg.ng.resetLab()
 		cg.ng.resetPtrs()
@@ -60,6 +62,8 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 		if err := cg.handleStrings(); err != nil {
 			return err
 		}
+
+		cg.env.ExitContext()
 	}
 	return nil
 }
