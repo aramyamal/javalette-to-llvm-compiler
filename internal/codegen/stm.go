@@ -118,8 +118,8 @@ func (cg *CodeGenerator) compileBlockStm(s *tast.BlockStm) error {
 }
 
 func (cg *CodeGenerator) compileIfStm(s *tast.IfStm) error {
-	trueLabel := cg.ng.nextLab()
-	falseLabel := cg.ng.nextLab()
+	thenLabel := cg.ng.nextLab()
+	elseLabel := cg.ng.nextLab()
 	endLabel := cg.ng.nextLab()
 
 	cond, err := cg.compileExp(s.Exp)
@@ -128,23 +128,47 @@ func (cg *CodeGenerator) compileIfStm(s *tast.IfStm) error {
 	}
 
 	llvmType := toLlvmType(s.Exp.Type())
-	if err := cg.write.BrIf(llvmType, cond, trueLabel, falseLabel); err != nil {
+	if err := cg.write.BrIf(llvmType, cond, thenLabel, elseLabel); err != nil {
 		return err
 	}
 
-	if err := cg.write.Label(trueLabel); err != nil {
+	// then
+	if err := cg.write.Label(thenLabel); err != nil {
 		return err
 	}
 	if err := cg.compileStm(s.ThenStm); err != nil {
 		return err
 	}
+	thenReturns := tast.GuaranteesReturn(s.ThenStm)
+	if !thenReturns {
+		if err := cg.write.Br(endLabel); err != nil {
+			return err
+		}
+	}
 
-	if err := cg.write.Label(falseLabel); err != nil {
+	// else
+	if err := cg.write.Label(elseLabel); err != nil {
 		return err
 	}
-	if err := cg.compileStm(s.ElseStm); err != nil {
-		return err
+	elseReturns := false
+	if s.ElseStm != nil {
+		if err := cg.compileStm(s.ElseStm); err != nil {
+			return err
+		}
+		elseReturns = tast.GuaranteesReturn(s.ElseStm)
+	}
+	if !elseReturns {
+		if err := cg.write.Br(endLabel); err != nil {
+			return err
+		}
 	}
 
-	return cg.write.Label(endLabel)
+	// only emit the end label if at least one branch does not return
+	if !thenReturns || !elseReturns {
+		if err := cg.write.Label(endLabel); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
