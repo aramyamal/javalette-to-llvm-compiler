@@ -21,6 +21,8 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		return cg.compileWhileStm(s)
 	case *tast.BlockStm:
 		return cg.compileBlockStm(s)
+	case *tast.IfStm:
+		return cg.compileIfStm(s)
 	default:
 		return fmt.Errorf(
 			"compileStm: unhandled stm type %T at %d:%d near '%s'",
@@ -110,4 +112,36 @@ func (cg *CodeGenerator) compileBlockStm(s *tast.BlockStm) error {
 		}
 	}
 	return nil
+}
+
+func (cg *CodeGenerator) compileIfStm(s *tast.IfStm) error {
+	trueLabel := cg.ng.nextLab()
+	falseLabel := cg.ng.nextLab()
+	endLabel := cg.ng.nextLab()
+
+	cond, err := cg.compileExp(s.Exp)
+	if err != nil {
+		return err
+	}
+
+	llvmType := toLlvmType(s.Exp.Type())
+	if err := cg.write.BrIf(llvmType, cond, trueLabel, falseLabel); err != nil {
+		return err
+	}
+
+	if err := cg.write.Label(trueLabel); err != nil {
+		return err
+	}
+	if err := cg.compileStm(s.ThenStm); err != nil {
+		return err
+	}
+
+	if err := cg.write.Label(falseLabel); err != nil {
+		return err
+	}
+	if err := cg.compileStm(s.ElseStm); err != nil {
+		return err
+	}
+
+	return cg.write.Label(endLabel)
 }
