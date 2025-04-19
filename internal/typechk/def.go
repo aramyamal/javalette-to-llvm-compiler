@@ -78,6 +78,21 @@ func (tc *TypeChecker) checkFuncDef(
 		)
 	}
 
+	if typ == types.Void && !hasReturn {
+		var voidReturn *tast.VoidReturnStm
+		if len(typedStms) > 0 {
+			lastStm := typedStms[len(typedStms)-1]
+			voidReturn = tast.NewVoidReturnStm(
+				lastStm.Line(),
+				lastStm.Col(),
+				lastStm.Text(),
+			)
+		} else {
+			voidReturn = tast.NewVoidReturnStm(line, col, text)
+		}
+		typedStms = append(typedStms, voidReturn)
+	}
+
 	typedArgs, err := toAstArgs(d.AllArg())
 	if err != nil {
 		return nil, err
@@ -90,5 +105,4 @@ func (tc *TypeChecker) checkFuncDef(
 		typ,
 		line, col, text,
 	), nil
-
 }
