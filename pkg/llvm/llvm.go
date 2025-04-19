@@ -105,7 +105,7 @@ func (w *LLVMWriter) Label(name string) error {
 }
 
 func (w *LLVMWriter) Br(label string) error {
-	llvmInstr := fmt.Sprintf("\tbr label %s", label)
+	llvmInstr := fmt.Sprintf("\tbr label %%%s\n", label)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
@@ -120,7 +120,7 @@ func (w *LLVMWriter) BrIf(
 		return fmt.Errorf("Br: cannot branch on non-boolean values")
 	}
 	llvmInstr := fmt.Sprintf(
-		"\tbr i1 %s, label %s, label %s\n", cond.String(), iftrue, iffalse,
+		"\tbr i1 %s, label %%%s, label %%%s\n", cond.String(), iftrue, iffalse,
 	)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
