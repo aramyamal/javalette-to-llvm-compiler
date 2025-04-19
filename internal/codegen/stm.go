@@ -25,18 +25,14 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	}
 }
 
-func (cg *CodeGenerator) compileExpStm(
-	s *tast.ExpStm,
-) error {
+func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
 	if _, err := cg.compileExp(s.Exp); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cg *CodeGenerator) compileDeclsStm(
-	s *tast.DeclsStm,
-) error {
+func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 	for _, item := range s.Items {
 		llvmType := toLlvmType(item.Type())
 		switch i := item.(type) {
@@ -60,9 +56,7 @@ func (cg *CodeGenerator) compileDeclsStm(
 	return nil
 }
 
-func (cg *CodeGenerator) compileReturnStm(
-	s *tast.ReturnStm,
-) error {
+func (cg *CodeGenerator) compileReturnStm(s *tast.ReturnStm) error {
 	reg, err := cg.compileExp(s.Exp)
 	if err != nil {
 		return err
