@@ -17,6 +17,8 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		return cg.compileReturnStm(s)
 	case *tast.VoidReturnStm:
 		return cg.write.Ret(llvm.Void)
+	case *tast.WhileStm:
+		return cg.compileWhileStm(s)
 	default:
 		return fmt.Errorf(
 			"compileStm: unhandled stm type %T at %d:%d near '%s'",
@@ -66,4 +68,37 @@ func (cg *CodeGenerator) compileReturnStm(s *tast.ReturnStm) error {
 	}
 	return nil
 
+}
+
+func (cg *CodeGenerator) compileWhileStm(s *tast.WhileStm) error {
+	conditionLab := cg.ng.nextLab()
+	bodyLab := cg.ng.nextLab()
+	endLab := cg.ng.nextLab()
+	if err := cg.write.Label(conditionLab); err != nil {
+		return err
+	}
+	des, err := cg.compileExp(s.Exp)
+	if err != nil {
+		return err
+	}
+	llvmType := toLlvmType(s.Exp.Type())
+	if err := cg.write.BrIf(llvmType, des, bodyLab, endLab); err != nil {
+		return err
+	}
+
+	if err := cg.write.Label(bodyLab); err != nil {
+		return err
+	}
+	if err := cg.compileStm(s.Stm); err != nil {
+		return err
+	}
+	if err := cg.write.Br(conditionLab); err != nil {
+		return err
+	}
+
+	if err := cg.write.Label(endLab); err != nil {
+		return err
+	}
+
+	return nil
 }
