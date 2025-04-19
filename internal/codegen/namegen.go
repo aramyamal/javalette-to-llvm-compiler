@@ -33,10 +33,11 @@ func (ng *NameGenerator) addString(content string) (llvm.Global, int) {
 
 func (ng *NameGenerator) ptrName(name string) llvm.Reg {
 	ptrCount := ng.ptrMap[name]
+	ng.ptrMap[name] = ptrCount + 1
 	if ptrCount == 0 {
-		return llvm.Reg(fmt.Sprintf(".%s_ptr", name))
+		return llvm.Reg(fmt.Sprintf(".%s_p", name))
 	}
-	return llvm.Reg(fmt.Sprintf(".%s_%dptr", name, ptrCount))
+	return llvm.Reg(fmt.Sprintf(".%s_p%d", name, ptrCount))
 }
 
 func (ng *NameGenerator) resetPtrs() {
