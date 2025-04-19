@@ -19,6 +19,8 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		return cg.write.Ret(llvm.Void)
 	case *tast.WhileStm:
 		return cg.compileWhileStm(s)
+	case *tast.BlockStm:
+		return cg.compileBlockStm(s)
 	default:
 		return fmt.Errorf(
 			"compileStm: unhandled stm type %T at %d:%d near '%s'",
@@ -96,9 +98,16 @@ func (cg *CodeGenerator) compileWhileStm(s *tast.WhileStm) error {
 		return err
 	}
 
-	if err := cg.write.Label(endLab); err != nil {
-		return err
-	}
+	return cg.write.Label(endLab)
+}
 
+func (cg *CodeGenerator) compileBlockStm(s *tast.BlockStm) error {
+	cg.env.EnterContext()
+	defer cg.env.ExitContext()
+	for _, stm := range s.Stms {
+		if err := cg.compileStm(stm); err != nil {
+			return err
+		}
+	}
 	return nil
 }
