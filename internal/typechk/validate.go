@@ -3,10 +3,7 @@ package typechk
 import (
 	"fmt"
 
-	"slices"
-
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
@@ -65,22 +62,4 @@ func validateFuncSigns(
 		}
 	}
 	return nil
-}
-
-func guaranteesReturn(stm tast.Stm) bool {
-	switch s := stm.(type) {
-	case *tast.ReturnStm:
-		return true
-	case *tast.BlockStm:
-		// a block guarantees return if at least one statement guarantees return
-		return slices.ContainsFunc(s.Stms, guaranteesReturn)
-	case *tast.IfStm:
-		// if statement guarantees return only if both branches guarantee return
-		if s.ElseStm == nil {
-			return false // no else branch means no guarantee
-		}
-		return guaranteesReturn(s.ThenStm) && guaranteesReturn(s.ElseStm)
-	default:
-		return false
-	}
 }

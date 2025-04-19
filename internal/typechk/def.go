@@ -70,7 +70,7 @@ func (tc *TypeChecker) checkFuncDef(
 		typedStms = append(typedStms, typedStm)
 	}
 
-	hasReturn := slices.ContainsFunc(typedStms, guaranteesReturn)
+	hasReturn := slices.ContainsFunc(typedStms, tast.GuaranteesReturn)
 
 	if typ != types.Void && !hasReturn {
 		return nil, fmt.Errorf(
