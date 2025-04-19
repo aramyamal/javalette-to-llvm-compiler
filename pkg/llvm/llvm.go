@@ -116,7 +116,7 @@ func (w *LLVMWriter) BrIf(
 	iftrue string,
 	iffalse string,
 ) error {
-	if !(typ != I1) {
+	if typ != I1 {
 		return fmt.Errorf("Br: cannot branch on non-boolean values")
 	}
 	llvmInstr := fmt.Sprintf(
