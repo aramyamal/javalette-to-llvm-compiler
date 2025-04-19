@@ -23,6 +23,8 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 		return cg.compileBlockStm(s)
 	case *tast.IfStm:
 		return cg.compileIfStm(s)
+	case *tast.BlankStm:
+		return nil
 	default:
 		return fmt.Errorf(
 			"compileStm: unhandled stm type %T at %d:%d near '%s'",
