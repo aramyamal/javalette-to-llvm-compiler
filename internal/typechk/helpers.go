@@ -12,7 +12,7 @@ func extractPosData(pr antlr.ParserRuleContext) (int, int, string) {
 	return pr.GetStart().GetLine(), pr.GetStart().GetColumn(), pr.GetText()
 }
 
-func toIrType(fromType parser.ITypeContext) (tast.Type, error) {
+func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
 	parserChild := fromType.GetChild(0)
 	switch parserChild.(type) {
 	case *parser.IntTypeContext:

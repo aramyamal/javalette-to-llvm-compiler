@@ -54,7 +54,7 @@ func (tc *TypeChecker) checkFuncDef(
 		}
 	}
 
-	typ, err := toIrType(d.Type_())
+	typ, err := toTastType(d.Type_())
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,7 @@ func validateMainFunc(defs []parser.IDefContext) error {
 		return fmt.Errorf("entrypoint 'main' may not have input variables")
 	}
 
-	if typ, err := toIrType(mainFunc.Type_()); err != nil {
+	if typ, err := toTastType(mainFunc.Type_()); err != nil {
 		return err
 	} else if typ != tast.Int {
 		return fmt.Errorf("'main' entrypoint function does not have type int")
@@ -43,7 +43,7 @@ func validateFuncSigns(
 	for _, def := range defs {
 		if funcDef, ok := def.(*parser.FuncDefContext); ok {
 			name := funcDef.Ident().GetText()
-			returnType, err := toIrType(funcDef.Type_())
+			returnType, err := toTastType(funcDef.Type_())
 			if err != nil {
 				return err
 			}

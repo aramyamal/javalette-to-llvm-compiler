@@ -33,7 +33,7 @@ func extractArgs(
 		switch a := arg.(type) {
 		case *parser.ParamArgContext:
 			paramName := a.Ident().GetText()
-			paramType, err := toIrType(a.Type_())
+			paramType, err := toTastType(a.Type_())
 			if err != nil {
 				return nil, nil, nil, err
 			}
