@@ -1,7 +1,5 @@
 package tast
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
-
 type Def interface {
 	TypedNode
 	defNode()
@@ -21,7 +19,7 @@ func NewFuncDef(
 	id string,
 	args []Arg,
 	stms []Stm,
-	typ types.Type,
+	typ Type,
 	line int,
 	col int,
 	text string,

@@ -5,11 +5,10 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func (tc *TypeChecker) checkItem(
-	typ types.Type,
+	typ tast.Type,
 	item parser.IItemContext,
 ) (tast.Item, error) {
 	line, col, text := extractPosData(item)
@@ -28,7 +27,7 @@ func (tc *TypeChecker) checkItem(
 }
 
 func (tc *TypeChecker) checkNoInitItem(
-	typ types.Type,
+	typ tast.Type,
 	i *parser.NoInitItemContext,
 	line, col int, text string,
 ) (*tast.NoInitItem, error) {
@@ -52,7 +51,7 @@ func (tc *TypeChecker) checkNoInitItem(
 }
 
 func (tc *TypeChecker) checkInitItem(
-	typ types.Type,
+	typ tast.Type,
 	i *parser.InitItemContext,
 	line, col int, text string,
 ) (*tast.InitItem, error) {

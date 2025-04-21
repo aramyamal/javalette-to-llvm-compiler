@@ -1,4 +1,4 @@
-package llvm
+package llvmgen
 
 import (
 	"fmt"
@@ -6,8 +6,12 @@ import (
 	"strings"
 )
 
-type LLVMWriter struct {
+type Writer struct {
 	writer io.Writer
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{writer: w}
 }
 
 type FuncParam struct {
@@ -37,16 +41,12 @@ func Phi(val Value, lab string) PhiPair {
 	return PhiPair{Val: val, Label: lab}
 }
 
-func NewLLVMWriter(w io.Writer) *LLVMWriter {
-	return &LLVMWriter{writer: w}
-}
-
-func (w *LLVMWriter) Newline() error {
+func (w *Writer) Newline() error {
 	_, err := w.writer.Write([]byte("\n"))
 	return err
 }
 
-func (w *LLVMWriter) Declare(
+func (w *Writer) Declare(
 	returns Type,
 	funcName Global,
 	inputs ...Type,
@@ -69,7 +69,7 @@ func (w *LLVMWriter) Declare(
 	return nil
 }
 
-func (w *LLVMWriter) StartDefine(
+func (w *Writer) StartDefine(
 	returns Type,
 	funcName Global,
 	inputs ...FuncParam,
@@ -89,28 +89,28 @@ func (w *LLVMWriter) StartDefine(
 	return err
 }
 
-func (w *LLVMWriter) EndDefine() error {
+func (w *Writer) EndDefine() error {
 	_, err := w.writer.Write([]byte("}\n"))
 	return err
 }
 
-func (w *LLVMWriter) Block(name string) error {
+func (w *Writer) Block(name string) error {
 	llvmInstr := fmt.Sprintf("\n%s:\n", name)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
 
-func (w *LLVMWriter) Label(name string) error {
+func (w *Writer) Label(name string) error {
 	return w.Block(name)
 }
 
-func (w *LLVMWriter) Br(label string) error {
+func (w *Writer) Br(label string) error {
 	llvmInstr := fmt.Sprintf("\tbr label %%%s\n", label)
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
 
-func (w *LLVMWriter) BrIf(
+func (w *Writer) BrIf(
 	typ Type,
 	cond Value,
 	iftrue string,
@@ -126,7 +126,7 @@ func (w *LLVMWriter) BrIf(
 	return err
 }
 
-func (w *LLVMWriter) Phi(
+func (w *Writer) Phi(
 	des Reg,
 	typ Type,
 	phiPairs ...PhiPair,
@@ -148,7 +148,7 @@ func (w *LLVMWriter) Phi(
 	return err
 }
 
-func (w *LLVMWriter) Ret(typ Type, val ...Value) error {
+func (w *Writer) Ret(typ Type, val ...Value) error {
 	var llvmInstr string
 	if typ == Void {
 		llvmInstr = "\tret void\n"
@@ -162,7 +162,7 @@ func (w *LLVMWriter) Ret(typ Type, val ...Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Constant(des Reg, typ Type, lit Value) error {
+func (w *Writer) Constant(des Reg, typ Type, lit Value) error {
 	llvmInstr := fmt.Sprintf(
 		"\t%s = %s %s\n",
 		des.String(), typ.String(), lit.String(),
@@ -171,7 +171,7 @@ func (w *LLVMWriter) Constant(des Reg, typ Type, lit Value) error {
 	return err
 }
 
-func (w *LLVMWriter) GetElementPtr(
+func (w *Writer) GetElementPtr(
 	des Reg,
 	typ Type,
 	from Global,
@@ -190,7 +190,7 @@ func (w *LLVMWriter) GetElementPtr(
 	return err
 }
 
-func (w *LLVMWriter) InternalConstant(name Global, typ Type, val Value) error {
+func (w *Writer) InternalConstant(name Global, typ Type, val Value) error {
 	llvmInstr := fmt.Sprintf(
 		"%s = internal constant %s %s\n",
 		name.String(), typ.String(), val.String(),
@@ -199,13 +199,13 @@ func (w *LLVMWriter) InternalConstant(name Global, typ Type, val Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Alloca(des Reg, typ Type) error {
+func (w *Writer) Alloca(des Reg, typ Type) error {
 	llvmInstr := fmt.Sprintf("\t%s = alloca %s\n", des.String(), typ.String())
 	_, err := w.writer.Write([]byte(llvmInstr))
 	return err
 }
 
-func (w *LLVMWriter) Store(typ Type, value Value, ptr Reg) error {
+func (w *Writer) Store(typ Type, value Value, ptr Reg) error {
 	llvmType := typ.String()
 	llvmInstr := fmt.Sprintf(
 		"\tstore %s %s, %s* %s\n",
@@ -215,7 +215,7 @@ func (w *LLVMWriter) Store(typ Type, value Value, ptr Reg) error {
 	return err
 }
 
-func (w *LLVMWriter) Load(des Reg, typ Type, ptr Reg) error {
+func (w *Writer) Load(des Reg, typ Type, ptr Reg) error {
 	llvmType := typ.String()
 	llvmInstr := fmt.Sprintf(
 		"\t%s = load %s, %s* %s, align %d\n",
@@ -226,7 +226,7 @@ func (w *LLVMWriter) Load(des Reg, typ Type, ptr Reg) error {
 }
 
 // Call emits a function call. If typ is llvm.Void, des is ignored
-func (w *LLVMWriter) Call(
+func (w *Writer) Call(
 	des Reg,
 	typ Type,
 	funcName Global,
@@ -253,7 +253,7 @@ func (w *LLVMWriter) Call(
 	return err
 }
 
-func (w *LLVMWriter) Sub(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Sub(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
@@ -277,7 +277,7 @@ func (w *LLVMWriter) Sub(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Add(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Add(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
@@ -301,7 +301,7 @@ func (w *LLVMWriter) Add(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Mul(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Mul(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
@@ -325,7 +325,7 @@ func (w *LLVMWriter) Mul(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Div(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Div(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
@@ -349,7 +349,7 @@ func (w *LLVMWriter) Div(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Rem(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Rem(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 
 	switch typ {
@@ -373,7 +373,7 @@ func (w *LLVMWriter) Rem(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) Xor(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) Xor(des Reg, typ Type, lhs, rhs Value) error {
 	llvmInstr := fmt.Sprintf(
 		"\t%s = xor %s %s, %s\n",
 		des.String(), typ.String(), lhs.String(), rhs.String(),
@@ -382,7 +382,7 @@ func (w *LLVMWriter) Xor(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpLt(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpLt(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I32:
@@ -405,7 +405,7 @@ func (w *LLVMWriter) CmpLt(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpLe(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpLe(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I32:
@@ -428,7 +428,7 @@ func (w *LLVMWriter) CmpLe(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpGt(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpGt(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I32:
@@ -451,7 +451,7 @@ func (w *LLVMWriter) CmpGt(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I32:
@@ -474,7 +474,7 @@ func (w *LLVMWriter) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I1:
@@ -502,7 +502,7 @@ func (w *LLVMWriter) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *LLVMWriter) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
+func (w *Writer) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
 	switch typ {
 	case I1:

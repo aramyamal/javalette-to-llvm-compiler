@@ -5,28 +5,28 @@ import (
 
 	"github.com/antlr4-go/antlr/v4"
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
 func extractPosData(pr antlr.ParserRuleContext) (int, int, string) {
 	return pr.GetStart().GetLine(), pr.GetStart().GetColumn(), pr.GetText()
 }
 
-func toIrType(fromType parser.ITypeContext) (types.Type, error) {
+func toIrType(fromType parser.ITypeContext) (tast.Type, error) {
 	parserChild := fromType.GetChild(0)
 	switch parserChild.(type) {
 	case *parser.IntTypeContext:
-		return types.Int, nil
+		return tast.Int, nil
 	case *parser.DoubleTypeContext:
-		return types.Double, nil
+		return tast.Double, nil
 	case *parser.BoolTypeContext:
-		return types.Bool, nil
+		return tast.Bool, nil
 	case *parser.StringTypeContext:
-		return types.String, nil
+		return tast.String, nil
 	case *parser.VoidTypeContext:
-		return types.Void, nil
+		return tast.Void, nil
 	default:
-		return types.Unknown, fmt.Errorf(
+		return tast.Unknown, fmt.Errorf(
 			"type '%T' not yet implemented at %d:%d near '%s'",
 			parserChild,
 			fromType.GetStart().GetLine(),
@@ -38,43 +38,43 @@ func toIrType(fromType parser.ITypeContext) (types.Type, error) {
 
 // Checks if actual type can be converted to expected type. Returns true if the
 // conversion is valid.
-func isConvertible(expected, actual types.Type) bool {
+func isConvertible(expected, actual tast.Type) bool {
 	switch expected {
-	case types.Double:
+	case tast.Double:
 		//return actual == ir.Int || actual == ir.Double
-		return actual == types.Double
-	case types.Int:
-		return actual == types.Int
-	case types.Bool:
-		return actual == types.Bool
-	case types.Void:
-		return actual == types.Void
-	case types.String:
-		return actual == types.String
+		return actual == tast.Double
+	case tast.Int:
+		return actual == tast.Int
+	case tast.Bool:
+		return actual == tast.Bool
+	case tast.Void:
+		return actual == tast.Void
+	case tast.String:
+		return actual == tast.String
 	default:
 		return false
 	}
 }
 
-// Determines the dominant type between two types for operations. For example,
+// Determines the dominant type between two tast.for operations. For example,
 // int + double = double
-func dominantType(type1, type2 types.Type) (types.Type, error) {
+func dominantType(type1, type2 tast.Type) (tast.Type, error) {
 	// if either type is Double, the result is Double
 
-	if (type1 == types.Double && type2 == types.Int) ||
-		(type1 == types.Double && type2 == types.Double) {
-		return types.Double, nil
+	if (type1 == tast.Double && type2 == tast.Int) ||
+		(type1 == tast.Double && type2 == tast.Double) {
+		return tast.Double, nil
 	}
 
-	// same types return the same type
+	// same tast.return the same type
 	if type1 == type2 {
 		switch type1 {
-		case types.Int, types.Bool, types.Void, types.Double:
+		case tast.Int, tast.Bool, tast.Void, tast.Double:
 			return type1, nil
 		}
 	}
 
-	return types.Unknown, fmt.Errorf(
+	return tast.Unknown, fmt.Errorf(
 		"illegal implicit conversion between %v and %v",
 		type1, type2,
 	)

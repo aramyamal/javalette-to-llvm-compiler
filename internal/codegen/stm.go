@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
@@ -16,7 +16,7 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	case *tast.ReturnStm:
 		return cg.compileReturnStm(s)
 	case *tast.VoidReturnStm:
-		return cg.write.Ret(llvm.Void)
+		return cg.write.Ret(llvmgen.Void)
 	case *tast.WhileStm:
 		return cg.compileWhileStm(s)
 	case *tast.BlockStm:

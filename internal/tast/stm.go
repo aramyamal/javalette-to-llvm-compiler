@@ -1,7 +1,5 @@
 package tast
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
-
 // Stm represents an untyped statement node in the typed abstract syntax tree
 type Stm interface {
 	Node
@@ -34,7 +32,7 @@ var _ Stm = (*ExpStm)(nil)
 
 // DeclsStm is a declaration statement node in the typed abstract syntax tree
 type DeclsStm struct {
-	Type  types.Type
+	Type  Type
 	Items []Item
 
 	BaseNode
@@ -59,7 +57,7 @@ var _ Stm = (*DeclsStm)(nil)
 
 // ReturnStm is a return statement node in the typed abstract syntax tree
 type ReturnStm struct {
-	Type types.Type
+	Type Type
 	Exp  Exp
 
 	BaseNode
@@ -68,7 +66,7 @@ type ReturnStm struct {
 func (*ReturnStm) stmNode() {}
 
 func NewReturnStm(
-	typ types.Type,
+	typ Type,
 	exp Exp,
 	line int,
 	col int,

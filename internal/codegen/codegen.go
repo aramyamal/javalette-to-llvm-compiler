@@ -5,18 +5,18 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 type CodeGenerator struct {
-	env   *env.Environment[llvm.Reg]
-	write *llvm.LLVMWriter
+	env   *env.Environment[llvmgen.Reg]
+	write *llvmgen.Writer
 	ng    *NameGenerator
 }
 
 func NewCodeGenerator(w io.Writer) *CodeGenerator {
-	env := env.NewEnvironment[llvm.Reg]()
-	writer := llvm.NewLLVMWriter(w)
+	env := env.NewEnvironment[llvmgen.Reg]()
+	writer := llvmgen.NewWriter(w)
 	nameGen := NewNameGenerator()
 	return &CodeGenerator{env: env, write: writer, ng: nameGen}
 }
@@ -24,23 +24,23 @@ func NewCodeGenerator(w io.Writer) *CodeGenerator {
 func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	// boilerplate std functions
 	if err := cg.write.Declare(
-		llvm.Void, "printInt", llvm.I32); err != nil {
+		llvmgen.Void, "printInt", llvmgen.I32); err != nil {
 		return err
 	}
 	if err := cg.write.Declare(
-		llvm.Void, "printDouble", llvm.Double,
+		llvmgen.Void, "printDouble", llvmgen.Double,
 	); err != nil {
 		return err
 	}
 	if err := cg.write.Declare(
-		llvm.Void, "printString", llvm.I8Ptr,
+		llvmgen.Void, "printString", llvmgen.I8Ptr,
 	); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(llvm.I32, "readInt"); err != nil {
+	if err := cg.write.Declare(llvmgen.I32, "readInt"); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(llvm.Double, "readDouble"); err != nil {
+	if err := cg.write.Declare(llvmgen.Double, "readDouble"); err != nil {
 		return err
 	}
 	cg.env.EnterContext()
@@ -70,8 +70,8 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 
 func (cg *CodeGenerator) emitVarAlloc(
 	name string,
-	typ llvm.Type,
-	init ...llvm.Value,
+	typ llvmgen.Type,
+	init ...llvmgen.Value,
 ) error {
 	varPtr := cg.ng.ptrName(name)
 	cg.env.ExtendVar(name, varPtr)
@@ -88,7 +88,7 @@ func (cg *CodeGenerator) emitVarAlloc(
 
 func (cg *CodeGenerator) handleStrings() error {
 	for name, str := range cg.ng.strMap {
-		typ := llvm.Array(llvm.I8, len(str)+1)
+		typ := llvmgen.Array(llvmgen.I8, len(str)+1)
 		if err := cg.write.Newline(); err != nil {
 			return err
 		}

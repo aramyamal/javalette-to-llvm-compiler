@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func validateMainFunc(defs []parser.IDefContext) error {
@@ -29,7 +29,7 @@ func validateMainFunc(defs []parser.IDefContext) error {
 
 	if typ, err := toIrType(mainFunc.Type_()); err != nil {
 		return err
-	} else if typ != types.Int {
+	} else if typ != tast.Int {
 		return fmt.Errorf("'main' entrypoint function does not have type int")
 	}
 
@@ -37,7 +37,7 @@ func validateMainFunc(defs []parser.IDefContext) error {
 }
 
 func validateFuncSigns(
-	env *env.Environment[types.Type],
+	env *env.Environment[tast.Type],
 	defs []parser.IDefContext,
 ) error {
 	for _, def := range defs {

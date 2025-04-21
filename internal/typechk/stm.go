@@ -5,7 +5,6 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func (tc *TypeChecker) checkStm(stm parser.IStmContext) (tast.Stm, error) {
@@ -59,7 +58,7 @@ func (tc *TypeChecker) checkDeclsStm(
 	if err != nil {
 		return nil, err
 	}
-	if typ == types.Void {
+	if typ == tast.Void {
 		return nil, fmt.Errorf(
 			"variable declaration of type void at %d:%d near '%s'",
 			line, col, text,
@@ -102,12 +101,12 @@ func (tc *TypeChecker) checkVoidReturnStm(
 	line, col int, text string,
 ) (*tast.VoidReturnStm, error) {
 	returnType := tc.env.ReturnType()
-	if isConvertible(returnType, types.Void) {
+	if isConvertible(returnType, tast.Void) {
 		return tast.NewVoidReturnStm(line, col, text), nil
 	}
 	return nil, fmt.Errorf(
 		"illegal conversion in return. Expected %s, but got %s instead",
-		returnType.String(), types.Void.String(),
+		returnType.String(), tast.Void.String(),
 	)
 }
 
@@ -118,7 +117,7 @@ func (tc *TypeChecker) checkWhileStm(
 	if err != nil {
 		return nil, err
 	}
-	if typedExp.Type() != types.Bool {
+	if typedExp.Type() != tast.Bool {
 		return nil, fmt.Errorf(
 			"expression in while-loop does not have type bool at %d:%d "+
 				"near '%s'", line, col, text,
@@ -156,7 +155,7 @@ func (tc *TypeChecker) checkIfStm(
 	if err != nil {
 		return nil, err
 	}
-	if typedExp.Type() != types.Bool {
+	if typedExp.Type() != tast.Bool {
 		return nil, fmt.Errorf(
 			"if else expression does not have type bool at %d:%d near '%s'",
 			line, col, text,

@@ -6,7 +6,6 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func (tc *TypeChecker) checkDefs(defs []parser.IDefContext) ([]tast.Def, error) {
@@ -18,7 +17,7 @@ func (tc *TypeChecker) checkDefs(defs []parser.IDefContext) ([]tast.Def, error) 
 			return nil, err
 		}
 		typedDefs = append(typedDefs, typedDef)
-		tc.env.SetReturnType(types.Unknown)
+		tc.env.SetReturnType(tast.Unknown)
 	}
 	return typedDefs, nil
 }
@@ -72,13 +71,13 @@ func (tc *TypeChecker) checkFuncDef(
 
 	hasReturn := slices.ContainsFunc(typedStms, tast.GuaranteesReturn)
 
-	if typ != types.Void && !hasReturn {
+	if typ != tast.Void && !hasReturn {
 		return nil, fmt.Errorf(
 			"function '%s' at %d:%d does not have a return", text, line, col,
 		)
 	}
 
-	if typ == types.Void && !hasReturn {
+	if typ == tast.Void && !hasReturn {
 		var voidReturn *tast.VoidReturnStm
 		if len(typedStms) > 0 {
 			lastStm := typedStms[len(typedStms)-1]

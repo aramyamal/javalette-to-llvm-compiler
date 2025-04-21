@@ -6,7 +6,6 @@ import (
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/gen/parser"
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
 )
 
 func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
@@ -130,11 +129,11 @@ func (tc *TypeChecker) inferFuncExp(
 			"calling undefined function '%s' at %d:%d", funcName, line, col,
 		)
 	}
-	expTypes := []types.Type{}
+	expTypes := []tast.Type{}
 	typedExps := []tast.Exp{}
 
-	// extract types in correct order
-	paramTypes := make([]types.Type, 0, len(sign.ParamNames))
+	// extract tast.in correct order
+	paramTypes := make([]tast.Type, 0, len(sign.ParamNames))
 	for _, paramName := range sign.ParamNames {
 		paramTypes = append(paramTypes, sign.Params[paramName])
 	}
@@ -198,7 +197,7 @@ func (tc *TypeChecker) inferNegExp(
 		return nil, err
 	}
 	typ := typedExp.Type()
-	if !(typ == types.Double || typ == types.Int) {
+	if !(typ == tast.Double || typ == tast.Int) {
 		return nil, fmt.Errorf(
 			"negation not defined for type %s at %d:%d near '%s'",
 			typ.String(), line, col, text,
@@ -214,7 +213,7 @@ func (tc *TypeChecker) inferNotExp(
 	if err != nil {
 		return nil, err
 	}
-	if typ := typedExp.Type(); typ != types.Bool {
+	if typ := typedExp.Type(); typ != tast.Bool {
 		return nil, fmt.Errorf(
 			"'!' not defined for type bool at %d:%d near '%s'", line, col, text,
 		)
@@ -232,19 +231,19 @@ func (tc *TypeChecker) inferPostExp(
 			"variable '%s' not found at %d:%d", varName, line, col,
 		)
 	}
-	if typ != types.Int { //&& typ != tast.Double {
+	if typ != tast.Int { //&& typ != tast.Double {
 		return nil, fmt.Errorf(
 			// "'++' or '--' operation can only be done on int or double at "+
 			"'++' or '--' operation can only be done on int at "+
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op types.Op
+	var op tast.Op
 	switch e.IncDecOp().(type) {
 	case *parser.IncContext:
-		op = types.OpInc
+		op = tast.OpInc
 	case *parser.DecContext:
-		op = types.OpDec
+		op = tast.OpDec
 	default:
 		return nil, fmt.Errorf(
 			"unhandled postfix operator type %T at %d:%d",
@@ -264,18 +263,18 @@ func (tc *TypeChecker) inferPreExp(
 			"variable '%s' not found at %d:%d", varName, line, col,
 		)
 	}
-	if typ != types.Int && typ != types.Double {
+	if typ != tast.Int && typ != tast.Double {
 		return nil, fmt.Errorf(
 			"'++' or '--' operation can only be done on int or double at "+
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op types.Op
+	var op tast.Op
 	switch e.IncDecOp().(type) {
 	case *parser.IncContext:
-		op = types.OpInc
+		op = tast.OpInc
 	case *parser.DecContext:
-		op = types.OpDec
+		op = tast.OpDec
 	default:
 		return nil, fmt.Errorf(
 			"unhandled prefix operator type %T at %d:%d",
@@ -299,15 +298,15 @@ func (tc *TypeChecker) inferMulExp(
 	}
 	rightType := rightExp.Type()
 
-	var op types.Op
+	var op tast.Op
 	switch e.MulOp().(type) {
 	case *parser.MulContext:
-		op = types.OpMul
+		op = tast.OpMul
 	case *parser.DivContext:
-		op = types.OpDiv
+		op = tast.OpDiv
 	case *parser.ModContext:
-		op = types.OpMod
-		if rightType == types.Double || leftType == types.Double {
+		op = tast.OpMod
+		if rightType == tast.Double || leftType == tast.Double {
 			return nil, fmt.Errorf(
 				"%s-operation not allowed for bool at %d:%d near '%s'",
 				op.String(), line, col, text,
@@ -319,14 +318,14 @@ func (tc *TypeChecker) inferMulExp(
 		)
 	}
 
-	if leftType == types.Bool || rightType == types.Bool {
+	if leftType == tast.Bool || rightType == tast.Bool {
 		return nil, fmt.Errorf(
 			"%s-operation not allowed for bool at %d:%d near '%s'",
 			op.String(), line, col, text,
 		)
 	}
 
-	if leftType == types.Void || rightType == types.Void {
+	if leftType == tast.Void || rightType == tast.Void {
 		return nil, fmt.Errorf(
 			"%s-operation not allowed for void at %d:%d near '%s'",
 			op.String(), line, col, text,
@@ -358,26 +357,26 @@ func (tc *TypeChecker) inferAddExp(
 	}
 	rightType := rightExp.Type()
 
-	var op types.Op
+	var op tast.Op
 	switch e.AddOp().(type) {
 	case *parser.AddContext:
-		op = types.OpAdd
+		op = tast.OpAdd
 	case *parser.SubContext:
-		op = types.OpSub
+		op = tast.OpSub
 	default:
 		return nil, fmt.Errorf(
 			"unhandled operator type %T at %d:%d", e.AddOp(), line, col,
 		)
 	}
 
-	if leftType == types.Bool || rightType == types.Bool {
+	if leftType == tast.Bool || rightType == tast.Bool {
 		return nil, fmt.Errorf(
 			"%s-operation not allowed for bool at %d:%d near '%s'",
 			op.String(), line, col, text,
 		)
 	}
 
-	if leftType == types.Void || rightType == types.Void {
+	if leftType == tast.Void || rightType == tast.Void {
 		return nil, fmt.Errorf(
 			"%s-operation not allowed for void at %d:%d near '%s'",
 			op.String(), line, col, text,
@@ -410,64 +409,64 @@ func (tc *TypeChecker) inferCmpExp(
 	leftType := leftExp.Type()
 	rightType := rightExp.Type()
 
-	if leftType == types.Void || rightType == types.Void {
+	if leftType == tast.Void || rightType == tast.Void {
 		return nil, fmt.Errorf(
 			"comparison with void type not allowed at %d:%d near '%s'",
 			line, col, text,
 		)
 	}
 
-	var op types.Op
+	var op tast.Op
 	switch cmp := e.CmpOp().(type) {
 	case *parser.LThContext:
-		if leftType == types.Bool || rightType == types.Bool {
+		if leftType == tast.Bool || rightType == tast.Bool {
 			return nil, fmt.Errorf(
 				"number comparisons with bool not allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		op = types.OpLt
+		op = tast.OpLt
 	case *parser.GThContext:
-		if leftType == types.Bool || rightType == types.Bool {
+		if leftType == tast.Bool || rightType == tast.Bool {
 			return nil, fmt.Errorf(
 				"number comparisons with bool not allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		op = types.OpGt
+		op = tast.OpGt
 	case *parser.LTEContext:
-		if leftType == types.Bool || rightType == types.Bool {
+		if leftType == tast.Bool || rightType == tast.Bool {
 			return nil, fmt.Errorf(
 				"number comparisons with bool not allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		op = types.OpLe
+		op = tast.OpLe
 	case *parser.GTEContext:
-		if leftType == types.Bool || rightType == types.Bool {
+		if leftType == tast.Bool || rightType == tast.Bool {
 			return nil, fmt.Errorf(
 				"number comparisons with bool not allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		op = types.OpGe
+		op = tast.OpGe
 	case *parser.EquContext:
-		if (leftType == types.Bool) != (rightType == types.Bool) {
+		if (leftType == tast.Bool) != (rightType == tast.Bool) {
 			return nil, fmt.Errorf(
-				"equality comparison between bool and non-bool types not"+
+				"equality comparison between bool and non-bool tast.not"+
 					" allowed at %d:%d near '%s'", line, col, text,
 			)
 		}
-		op = types.OpEq
+		op = tast.OpEq
 	case *parser.NEqContext:
-		if (leftType == types.Bool) != (rightType == types.Bool) {
+		if (leftType == tast.Bool) != (rightType == tast.Bool) {
 			return nil, fmt.Errorf(
-				"inequality comparison between bool and non-bool types not"+
+				"inequality comparison between bool and non-bool tast.not"+
 					" allowed at %d:%d near '%s'",
 				line, col, text,
 			)
 		}
-		op = types.OpNe
+		op = tast.OpNe
 	default:
 		return nil, fmt.Errorf(
 			"unhandled comparison operator type %T at %d:%d",
@@ -500,7 +499,7 @@ func (tc *TypeChecker) inferAndExp(
 	if err != nil {
 		return nil, err
 	}
-	if leftExp.Type() != types.Bool || rightExp.Type() != types.Bool {
+	if leftExp.Type() != tast.Bool || rightExp.Type() != tast.Bool {
 		return nil, fmt.Errorf(
 			"AND (&&) operation can only occur between booleans at %d:%d "+
 				"near '%s'", line, col, text,
@@ -521,7 +520,7 @@ func (tc *TypeChecker) inferOrExp(
 		return nil, err
 	}
 
-	if leftExp.Type() != types.Bool || rightExp.Type() != types.Bool {
+	if leftExp.Type() != tast.Bool || rightExp.Type() != tast.Bool {
 		return nil, fmt.Errorf(
 			"OR (||) operation can only occur between booleans at %d:%d "+
 				"near '%s'", line, col, text,
@@ -563,8 +562,8 @@ func (tc *TypeChecker) inferAssignExp(
 	), nil
 }
 
-func promoteExp(exp tast.Exp, typ types.Type) tast.Exp {
-	if exp.Type() == types.Int && typ == types.Double {
+func promoteExp(exp tast.Exp, typ tast.Type) tast.Exp {
+	if exp.Type() == tast.Int && typ == tast.Double {
 		return tast.NewIntToDoubleExp(exp)
 	}
 	return exp

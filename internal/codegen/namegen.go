@@ -3,14 +3,14 @@ package codegen
 import (
 	"fmt"
 
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 type NameGenerator struct {
 	reg    int
 	lab    int
 	strIdx int
-	strMap map[llvm.Global]llvm.LitString
+	strMap map[llvmgen.Global]llvmgen.LitString
 	ptrMap map[string]int
 }
 
@@ -19,25 +19,25 @@ func NewNameGenerator() *NameGenerator {
 		reg:    0,
 		lab:    0,
 		strIdx: 0,
-		strMap: make(map[llvm.Global]llvm.LitString),
+		strMap: make(map[llvmgen.Global]llvmgen.LitString),
 		ptrMap: make(map[string]int),
 	}
 }
 
-func (ng *NameGenerator) addString(content string) (llvm.Global, int) {
-	name := llvm.Global(fmt.Sprintf("s_%d", ng.strIdx))
+func (ng *NameGenerator) addString(content string) (llvmgen.Global, int) {
+	name := llvmgen.Global(fmt.Sprintf("s_%d", ng.strIdx))
 	ng.strIdx++
-	ng.strMap[name] = llvm.LitString(content)
-	return llvm.Global(name), len(content) + 1
+	ng.strMap[name] = llvmgen.LitString(content)
+	return llvmgen.Global(name), len(content) + 1
 }
 
-func (ng *NameGenerator) ptrName(name string) llvm.Reg {
+func (ng *NameGenerator) ptrName(name string) llvmgen.Reg {
 	ptrCount := ng.ptrMap[name]
 	ng.ptrMap[name] = ptrCount + 1
 	if ptrCount == 0 {
-		return llvm.Reg(fmt.Sprintf(".%s_p", name))
+		return llvmgen.Reg(fmt.Sprintf(".%s_p", name))
 	}
-	return llvm.Reg(fmt.Sprintf(".%s_p%d", name, ptrCount))
+	return llvmgen.Reg(fmt.Sprintf(".%s_p%d", name, ptrCount))
 }
 
 func (ng *NameGenerator) resetPtrs() {
@@ -45,13 +45,13 @@ func (ng *NameGenerator) resetPtrs() {
 }
 
 func (ng *NameGenerator) resetStrings() {
-	ng.strMap = make(map[llvm.Global]llvm.LitString)
+	ng.strMap = make(map[llvmgen.Global]llvmgen.LitString)
 }
 
-func (ng *NameGenerator) nextReg() llvm.Reg {
+func (ng *NameGenerator) nextReg() llvmgen.Reg {
 	regName := fmt.Sprintf("t%d", ng.reg)
 	ng.reg++
-	return llvm.Reg(regName)
+	return llvmgen.Reg(regName)
 }
 
 func (ng *NameGenerator) nextLab() string {

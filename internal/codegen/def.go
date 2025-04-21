@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvm"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 func (cg *CodeGenerator) compileDef(def tast.Def) error {
@@ -27,7 +27,7 @@ func (cg *CodeGenerator) compileFuncDef(d *tast.FuncDef) error {
 	}
 	if err := cg.write.StartDefine(
 		toLlvmType(d.Type()),
-		llvm.Global(d.Id),
+		llvmgen.Global(d.Id),
 		params...,
 	); err != nil {
 		return err
@@ -52,12 +52,12 @@ func (cg *CodeGenerator) compileFuncDef(d *tast.FuncDef) error {
 	return cg.write.EndDefine()
 }
 
-func extractParams(args []tast.Arg) ([]llvm.FuncParam, error) {
-	var params []llvm.FuncParam
+func extractParams(args []tast.Arg) ([]llvmgen.FuncParam, error) {
+	var params []llvmgen.FuncParam
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case *tast.ParamArg:
-			params = append(params, llvm.Param(toLlvmType(a.Type()), a.Id))
+			params = append(params, llvmgen.Param(toLlvmType(a.Type()), a.Id))
 		default:
 			return nil, fmt.Errorf(
 				"extractParams: unhandled Arg type %T at %d:%d near '%s'",

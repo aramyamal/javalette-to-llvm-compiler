@@ -1,7 +1,5 @@
 package tast
 
-import types "github.com/aramyamal/javalette-to-llvm-compiler/pkg/types"
-
 type Node interface {
 	Line() int
 	Col() int
@@ -21,12 +19,12 @@ func (n BaseNode) Text() string { return n.text }
 // typed node of typed ast
 type TypedNode interface {
 	Node
-	Type() types.Type
+	Type() Type
 }
 
 type BaseTypedNode struct {
 	BaseNode
-	typ types.Type
+	typ Type
 }
 
-func (n BaseTypedNode) Type() types.Type { return n.typ }
+func (n BaseTypedNode) Type() Type { return n.typ }
