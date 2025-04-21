@@ -23,6 +23,10 @@ go.work.sum
 
 # ignore generated files
 gen/*
+# except for their documentation
+!gen/parser/
+gen/parser/*
+!gen/parser/doc.go
 
 # ignore build directory
 build/*

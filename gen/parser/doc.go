@@ -3,5 +3,3 @@
 // defines the parser for Javalette source files, as well as interfaces and
 // structures used to represent the parse tree.
 package parser
-
-//go:generate ./../../scripts/generate.sh
