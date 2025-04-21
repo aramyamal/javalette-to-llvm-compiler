@@ -2,6 +2,8 @@ package tast
 
 import "slices"
 
+// GuaranteesReturn checks if the given statement guarantees a return on all
+// paths when traversing all children nodes of the statement node TAST.
 func GuaranteesReturn(stm Stm) bool {
 	switch s := stm.(type) {
 	case *ReturnStm:

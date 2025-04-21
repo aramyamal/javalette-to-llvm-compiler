@@ -1,20 +1,22 @@
 package tast
 
-// Stm represents an untyped statement node in the typed abstract syntax tree
+// Stm represents an untyped statement node in the TAST.
 type Stm interface {
 	Node
 	stmNode()
 }
 
-// ExpStm is an expression statement node in the typed abstract syntax tree
+// ExpStm represents an expression statement node in the TAST.
 type ExpStm struct {
-	Exp Exp
+	Exp Exp // The expression
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*ExpStm) stmNode() {}
 
+// NewExpStm creates a new ExpStm node with the given expression and source
+// location.
 func NewExpStm(
 	exp Exp,
 	line int,
@@ -30,16 +32,19 @@ func NewExpStm(
 // ensure that ExpStm implements Stm
 var _ Stm = (*ExpStm)(nil)
 
-// DeclsStm is a declaration statement node in the typed abstract syntax tree
+// DeclsStm represents a variable declaration statement node in the TAST.
+// Each variable declared in this statement is represented as an Item type.
 type DeclsStm struct {
-	Type  Type
-	Items []Item
+	Type  Type   // Declared type for all variables in this statement
+	Items []Item // List of variable declarations
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*DeclsStm) stmNode() {}
 
+// NewDeclsStm creates a new DeclsStm node with the given variable declarations
+// and source location.
 func NewDeclsStm(
 	items []Item,
 	line int,
@@ -55,16 +60,18 @@ func NewDeclsStm(
 // ensure that DeclsStm implements Stm
 var _ Stm = (*DeclsStm)(nil)
 
-// ReturnStm is a return statement node in the typed abstract syntax tree
+// ReturnStm represents a return statement node with a value in the TAST.
 type ReturnStm struct {
-	Type Type
-	Exp  Exp
+	Type Type // Return type
+	Exp  Exp  // Return expression
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*ReturnStm) stmNode() {}
 
+// NewReturnStm creates a new ReturnStm node with the given type, expression,
+// and source location.
 func NewReturnStm(
 	typ Type,
 	exp Exp,
@@ -82,14 +89,16 @@ func NewReturnStm(
 // ensure that ReturnStm implements Stm
 var _ Stm = (*ReturnStm)(nil)
 
-// VoidReturnStm is a return statement node in the typed abstract syntax tree
-// that returns void
+// VoidReturnStm represents a return statement node with no value (void) in the
+// TAST.
 type VoidReturnStm struct {
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*VoidReturnStm) stmNode() {}
 
+// NewVoidReturnStm creates a new VoidReturnStm node with the given source
+// location.
 func NewVoidReturnStm(
 	line int,
 	col int,
@@ -103,16 +112,18 @@ func NewVoidReturnStm(
 // ensure that ReturnStm implements Stm
 var _ Stm = (*VoidReturnStm)(nil)
 
-// WhileStm is while statement node in the typed abstract syntax tree
+// WhileStm represents a while statement node in the TAST.
 type WhileStm struct {
-	Exp Exp
-	Stm Stm
+	Exp Exp // Condition expression
+	Stm Stm // Body statement
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*WhileStm) stmNode() {}
 
+// NewWhileStm creates a new WhileStm node with the given condition, body, and
+// source location.
 func NewWhileStm(
 	exp Exp,
 	stm Stm,
@@ -130,16 +141,18 @@ func NewWhileStm(
 // ensure that WhileStm implements Stm
 var _ Stm = (*WhileStm)(nil)
 
-// BlockStm is block statement node in the typed abstract syntax tree containing
-// a list of other statement nodes
+// BlockStm is block statement node in the TAST containing a list of other
+// statement nodes.
 type BlockStm struct {
-	Stms []Stm
+	Stms []Stm // List of statements
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*BlockStm) stmNode() {}
 
+// NewBlockStm creates a new BlockStm node with the given statements and source
+// location.
 func NewBlockStm(
 	stms []Stm,
 	line int,
@@ -155,18 +168,20 @@ func NewBlockStm(
 // ensure that BlockStm implements Stm
 var _ Stm = (*BlockStm)(nil)
 
-// IfStm is an if statement node in the typed abstract syntax tree containing
-// a then statement and an else statement that is nil if there is no else branch
+// IfStm represents an if statement node in the TAST, with an optional else
+// branch.
 type IfStm struct {
-	Exp     Exp
-	ThenStm Stm
-	ElseStm Stm
+	Exp     Exp // Condition expression
+	ThenStm Stm // Then branch statement
+	ElseStm Stm // Else branch statement (nil if absent)
 
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*IfStm) stmNode() {}
 
+// NewIfStm creates a new IfStm node with the given condition, branches, and
+// source location.
 func NewIfStm(
 	exp Exp,
 	thenStm Stm,
@@ -186,13 +201,14 @@ func NewIfStm(
 // ensure that IfStm implements Stm
 var _ Stm = (*IfStm)(nil)
 
-// BlankStm is an empty statement node in the typed abstract syntax tree
+// BlankStm represents an empty statement node in the TAST.
 type BlankStm struct {
-	BaseNode
+	BaseNode // Embeds source location information
 }
 
 func (*BlankStm) stmNode() {}
 
+// NewBlankStm creates a new BlankStm node with the given source location.
 func NewBlankStm(
 	line int,
 	col int,
