@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+shopt -s extglob
 
 echo "Cleaning up all build artefacts..."
 
@@ -11,7 +12,8 @@ cd "$SCRIPT_DIR/.."
 echo "Removing build/"
 rm -rf ./build 
 echo "Removing gen/"
-rm -rf ./gen
+cd ./gen/parser/
+rm -rf !(doc.go)
 # echo "Removing antlr4 jar from tools/"
 # rm -rf ./tools/
 
