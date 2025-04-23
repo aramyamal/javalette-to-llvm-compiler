@@ -1,3 +1,6 @@
+// Package codegen provides tools for generating llvm code by traversing a typed
+// abstract syntax tree (TAST) created using the tast package. The main entry
+// point is the CodeGenerator type, LLVM code using the llvmgen package.
 package codegen
 
 import (
@@ -8,12 +11,16 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
+// CodeGenerator generates LLVM code from the typed abstract syntax tree (TAST)
+// of a Javalette program, as produced by typechk.TypeChecker.
 type CodeGenerator struct {
 	env   *env.Environment[llvmgen.Reg]
 	write *llvmgen.Writer
 	ng    *NameGenerator
 }
 
+// NewCodeGenerator creates and returns a new CodeGenerator instance that writes
+// to w.
 func NewCodeGenerator(w io.Writer) *CodeGenerator {
 	env := env.NewEnvironment[llvmgen.Reg]()
 	writer := llvmgen.NewWriter(w)
@@ -21,6 +28,10 @@ func NewCodeGenerator(w io.Writer) *CodeGenerator {
 	return &CodeGenerator{env: env, write: writer, ng: nameGen}
 }
 
+// GenerateCode performs LLVM code generation for the given TAST prgm
+// representing a Javalette program. The input shoud be a pointer to the root of
+// the TAST (*tast.Prgm). If an error is encountered during traversal,
+// GenerateCode returns it.
 func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	// boilerplate std functions
 	if err := cg.write.Declare(

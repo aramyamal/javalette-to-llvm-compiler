@@ -6,6 +6,8 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
+// NameGenerator generates unique names for LLVM registers, labels, and string
+// literals during code generation.
 type NameGenerator struct {
 	reg    int
 	lab    int
@@ -14,6 +16,8 @@ type NameGenerator struct {
 	ptrMap map[string]int
 }
 
+// NewNameGenerator returns a new instance of NameGenerator with all counters
+// and maps initialized.
 func NewNameGenerator() *NameGenerator {
 	return &NameGenerator{
 		reg:    0,
