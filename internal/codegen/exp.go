@@ -17,12 +17,12 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 		return llvmgen.LitInt(e.Value), nil
 	case *tast.DoubleExp:
 		return llvmgen.LitDouble(e.Value), nil
-	case *tast.StringExp:
-		return cg.compileStringExp(e)
 	case *tast.IdentExp:
 		return cg.compileIdentExp(e)
 	case *tast.FuncExp:
 		return cg.compileFuncExp(e)
+	case *tast.StringExp:
+		return cg.compileStringExp(e)
 	case *tast.NegExp:
 		return cg.compileNegExp(e)
 	case *tast.NotExp:
