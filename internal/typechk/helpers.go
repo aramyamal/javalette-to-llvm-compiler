@@ -13,27 +13,34 @@ func extractPosData(pr antlr.ParserRuleContext) (int, int, string) {
 }
 
 func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
-	parserChild := fromType.GetChild(0)
-	switch parserChild.(type) {
+	baseType := fromType.BaseType()
+	var t tast.Type
+	switch baseType.GetChild(0).(type) {
 	case *parser.IntTypeContext:
-		return tast.Int, nil
+		t = tast.Int
 	case *parser.DoubleTypeContext:
-		return tast.Double, nil
+		t = tast.Double
 	case *parser.BoolTypeContext:
-		return tast.Bool, nil
+		t = tast.Bool
 	case *parser.StringTypeContext:
-		return tast.String, nil
+		t = tast.String
 	case *parser.VoidTypeContext:
-		return tast.Void, nil
+		t = tast.Void
 	default:
 		return tast.Unknown, fmt.Errorf(
 			"type '%T' not yet implemented at %d:%d near '%s'",
-			parserChild,
+			baseType,
 			fromType.GetStart().GetLine(),
 			fromType.GetStart().GetColumn(),
 			fromType.GetText(),
 		)
 	}
+
+	arraySuffixes := fromType.AllArraySuffix()
+	for range arraySuffixes {
+		t = tast.Array(t)
+	}
+	return t, nil
 }
 
 // Checks if actual type can be converted to expected type. Returns true if the

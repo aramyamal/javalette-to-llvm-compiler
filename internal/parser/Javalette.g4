@@ -22,6 +22,7 @@ stm
     | type item (',' item)* ';'                 # DeclsStm
     | 'return' exp ';'                          # ReturnStm
     | 'return' ';'                              # VoidReturnStm
+    | 'for' '(' type Ident ':' exp ')' stm      # ForEachStm
     | 'while' '(' exp ')' stm                   # WhileStm
     | '{' stm* '}'                              # BlockStm
     | 'if' '(' exp ')' stm ('else' stm)?        # IfStm
@@ -35,23 +36,33 @@ item
 
 // expressions can be the following
 exp
-    : '(' exp ')'                       # ParenExp
-    | boolLit                           # BoolExp
-    | Integer                           # IntExp
-    | Double                            # DoubleExp
-    | Ident                             # IdentExp
-    | Ident '(' (exp (',' exp)*)? ')'   # FuncExp
-    | String                            # StringExp
-    | '-' exp                           # NegExp
-    | '!' exp                           # NotExp
-    | Ident incDecOp                    # PostExp
-    | incDecOp Ident                    # PreExp
-    | exp mulOp exp                     # MulExp
-    | exp addOp exp                     # AddExp
-    | exp cmpOp exp                     # CmpExp
-    | exp '&&' exp                      # AndExp
-    | exp '||' exp                      # OrExp
-    | <assoc=right> Ident '=' exp       # AssignExp
+    : '(' exp ')'                                # ParenExp
+    | boolLit                                    # BoolExp
+    | Integer                                    # IntExp
+    | Double                                     # DoubleExp
+    | 'new' baseType arrayIndex+                 # NewArrExp
+    | Ident                                      # IdentExp
+    | Ident '(' (exp (',' exp)*)? ')'            # FuncExp
+    | exp arrayIndex+                            # ArrIndexExp
+    | exp '.' Ident                              # FieldExp
+    | String                                     # StringExp
+    | '-' exp                                    # NegExp
+    | '!' exp                                    # NotExp
+    | Ident incDecOp                             # PostExp
+    | exp arrayIndex+ incDecOp                   # ArrPostExp
+    | incDecOp Ident                             # PreExp
+    | incDecOp exp arrayIndex+                   # ArrPreExp
+    | exp mulOp exp                              # MulExp
+    | exp addOp exp                              # AddExp
+    | exp cmpOp exp                              # CmpExp
+    | exp '&&' exp                               # AndExp
+    | exp '||' exp                               # OrExp
+    | <assoc=right> Ident '=' exp                # AssignExp
+    | <assoc=right> exp arrayIndex+ '=' exp      # ArrAssignExp
+    ;
+
+arrayIndex
+    : '[' exp ']'
     ;
 
 boolType: 'boolean';
@@ -59,7 +70,22 @@ intType: 'int';
 doubleType: 'double';
 stringType: 'string';
 voidType: 'void';
-type: boolType | intType | doubleType | stringType | voidType ;
+baseType
+    : boolType
+    | intType
+    | doubleType
+    | stringType
+    | voidType
+    ;
+
+type
+    : baseType arraySuffix*
+    ;
+
+arraySuffix
+    : '[' ']'
+    ;
+
 
 boolLit
     : 'true'                            #TrueLit

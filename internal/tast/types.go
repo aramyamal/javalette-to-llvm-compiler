@@ -1,10 +1,15 @@
 package tast
 
 // Type represents a Javalette type in the typed abstract syntax tree (TAST).
-type Type int
+type Type interface {
+	String() string
+	// You can add more methods if needed
+}
+
+type BaseType int
 
 const (
-	Unknown Type = iota
+	Unknown BaseType = iota
 	Int
 	Double
 	Bool
@@ -12,8 +17,7 @@ const (
 	Void
 )
 
-// String returns the string representation of the Type.
-func (t Type) String() string {
+func (b BaseType) String() string {
 	return [...]string{
 		"Unknown",
 		"Int",
@@ -21,7 +25,19 @@ func (t Type) String() string {
 		"Bool",
 		"String",
 		"Void",
-	}[t]
+	}[b]
+}
+
+type ArrayType struct {
+	Elem Type
+}
+
+func (a *ArrayType) String() string {
+	return a.Elem.String() + "[]"
+}
+
+func Array(elem Type) *ArrayType {
+	return &ArrayType{Elem: elem}
 }
 
 // Op represents an operator in the TAST.
