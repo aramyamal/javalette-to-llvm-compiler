@@ -124,6 +124,9 @@ type ForEachStm struct {
 
 func (*ForEachStm) stmNode() {}
 
+// ensure that ForEachStm implements Stm
+var _ Stm = (*ForEachStm)(nil)
+
 // NewForEachStm creates a new ForEachStm node with the given loop variable
 // type, variable name, array expression, body statement, and source location.
 func NewForEachStm(
