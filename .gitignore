@@ -34,4 +34,4 @@ build/*
 # ignore jar files
 *.jar
 
-temp/
+tester/
