@@ -112,6 +112,41 @@ func NewVoidReturnStm(
 // ensure that ReturnStm implements Stm
 var _ Stm = (*VoidReturnStm)(nil)
 
+// ForEachStm represents a for-each loop statement node in the TAST.
+type ForEachStm struct {
+	Type Type   // Type of the loop variable
+	Id   string // Name of the loop variable
+	Exp  Exp    // Array expression to iterate over
+	Stm  Stm    // Body statement to execute for each element
+
+	BaseNode // Embeds source location information
+}
+
+func (*ForEachStm) stmNode() {}
+
+// NewForEachStm creates a new ForEachStm node with the given loop variable
+// type, variable name, array expression, body statement, and source location.
+func NewForEachStm(
+	typ Type,
+	id string,
+	exp Exp,
+	stm Stm,
+	line int,
+	col int,
+	text string,
+) *ForEachStm {
+	return &ForEachStm{
+		Type:     typ,
+		Id:       id,
+		Exp:      exp,
+		Stm:      stm,
+		BaseNode: BaseNode{line: line, col: col, text: text},
+	}
+}
+
+// ensure that ReturnStm implements Stm
+var _ Stm = (*VoidReturnStm)(nil)
+
 // WhileStm represents a while statement node in the TAST.
 type WhileStm struct {
 	Exp Exp // Condition expression
