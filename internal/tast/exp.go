@@ -154,6 +154,37 @@ func NewDoubleExp(
 // check that DoubleExp implements Exp
 var _ Exp = (*DoubleExp)(nil)
 
+// NewArrExp represents array allocation expression in the TAST.
+type NewArrExp struct {
+	Exps []Exp // Array index expressions
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*NewArrExp) expNode()           {}
+func (NewArrExp) HasSideEffect() bool { return true }
+
+// NewNewArrExp creates a new NewArrExp node in the TAST with dimension
+// expressions, type, and source location.
+func NewNewArrExp(
+	exps []Exp,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *NewArrExp {
+	return &NewArrExp{
+		Exps: exps,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that NewArrExp implements Exp
+var _ Exp = (*NewArrExp)(nil)
+
 // IdentExp represents an identifier expression node in the TAST.
 type IdentExp struct {
 	Id string // Identifier name

@@ -19,6 +19,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferIntExp(e, line, col, text)
 	case *parser.DoubleExpContext:
 		return tc.inferDoubleExp(e, line, col, text)
+	case *parser.NewArrExpContext:
+		return tc.inferNewArrExp(e, line, col, text)
 	case *parser.IdentExpContext:
 		return tc.inferIdentExp(e, line, col, text)
 	case *parser.FuncExpContext:
@@ -101,6 +103,35 @@ func (tc *TypeChecker) inferDoubleExp(
 		)
 	}
 	return tast.NewDoubleExp(value, line, col, text), nil
+}
+
+func (tc *TypeChecker) inferNewArrExp(
+	e *parser.NewArrExpContext, line, col int, text string,
+) (*tast.NewArrExp, error) {
+	typ, err := toTastBaseType(e.BaseType())
+	if err != nil {
+		return nil, err
+	}
+	var indexExps []tast.Exp
+	for i, idx := range e.AllArrayIndex() {
+		typedExp, err := tc.inferExp(idx.Exp())
+		if err != nil {
+			return nil, err
+		}
+		if typedExp.Type() != tast.Int {
+			return nil, fmt.Errorf(
+				"array index at dimension %d must be of integer type at %d:%d "+
+					" near %s", i, line, col, text,
+			)
+		}
+		indexExps = append(indexExps, typedExp)
+	}
+
+	for range indexExps {
+		typ = tast.Array(typ)
+	}
+
+	return tast.NewNewArrExp(indexExps, typ, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferIdentExp(
