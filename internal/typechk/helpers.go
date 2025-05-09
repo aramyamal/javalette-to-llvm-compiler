@@ -12,30 +12,35 @@ func extractPosData(pr antlr.ParserRuleContext) (int, int, string) {
 	return pr.GetStart().GetLine(), pr.GetStart().GetColumn(), pr.GetText()
 }
 
-func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
-	baseType := fromType.BaseType()
-	var t tast.Type
-	switch baseType.GetChild(0).(type) {
+func toTastBaseType(fromType parser.IBaseTypeContext) (tast.Type, error) {
+	switch fromType.GetChild(0).(type) {
 	case *parser.IntTypeContext:
-		t = tast.Int
+		return tast.Int, nil
 	case *parser.DoubleTypeContext:
-		t = tast.Double
+		return tast.Double, nil
 	case *parser.BoolTypeContext:
-		t = tast.Bool
+		return tast.Bool, nil
 	case *parser.StringTypeContext:
-		t = tast.String
+		return tast.String, nil
 	case *parser.VoidTypeContext:
-		t = tast.Void
+		return tast.Void, nil
 	default:
 		return tast.Unknown, fmt.Errorf(
 			"type '%T' not yet implemented at %d:%d near '%s'",
-			baseType,
+			fromType,
 			fromType.GetStart().GetLine(),
 			fromType.GetStart().GetColumn(),
 			fromType.GetText(),
 		)
 	}
+}
 
+func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
+	baseType := fromType.BaseType()
+	t, err := toTastBaseType(baseType)
+	if err != nil {
+		return nil, err
+	}
 	arraySuffixes := fromType.AllArraySuffix()
 	for range arraySuffixes {
 		t = tast.Array(t)
