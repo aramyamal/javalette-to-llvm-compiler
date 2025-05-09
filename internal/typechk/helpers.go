@@ -51,6 +51,18 @@ func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
 // Checks if actual type can be converted to expected type. Returns true if the
 // conversion is valid.
 func isConvertible(expected, actual tast.Type) bool {
+
+	// handle array type recursively
+	expectedArr, expectedIsArr := expected.(*tast.ArrayType)
+	actualArr, actualIsArr := actual.(*tast.ArrayType)
+	if expectedIsArr && actualIsArr {
+		return isConvertible(expectedArr.Elem, actualArr.Elem)
+	}
+	if expectedIsArr || actualIsArr {
+		return false
+	}
+
+	// then handle base types
 	switch expected {
 	case tast.Double:
 		//return actual == ir.Int || actual == ir.Double
