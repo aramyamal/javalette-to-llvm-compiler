@@ -185,6 +185,40 @@ func NewNewArrExp(
 // check that NewArrExp implements Exp
 var _ Exp = (*NewArrExp)(nil)
 
+// FieldExp represents a field access expression in the TAST.
+type FieldExp struct {
+	Exp  Exp    // Expression whose field to access
+	Name string // Name of the field to access
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*FieldExp) expNode()           {}
+func (FieldExp) HasSideEffect() bool { return false }
+
+// NewFieldExp creates a new FieldExp node with the given expression
+// whose field to access, the name of the field, type, and source location.
+func NewFieldExp(
+	exp Exp,
+	name string,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *FieldExp {
+	return &FieldExp{
+		Exp:  exp,
+		Name: name,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that FieldExp implements Exp
+var _ Exp = (*FieldExp)(nil)
+
 // IdentExp represents an identifier expression node in the TAST.
 type IdentExp struct {
 	Id string // Identifier name
