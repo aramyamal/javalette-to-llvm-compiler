@@ -25,6 +25,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferIdentExp(e, line, col, text)
 	case *parser.FuncExpContext:
 		return tc.inferFuncExp(e, line, col, text)
+	case *parser.ArrIndexExpContext:
+		return tc.inferArrIndexExp(e, line, col, text)
 	case *parser.FieldExpContext:
 		return tc.inferFieldExp(e, line, col, text)
 	case *parser.StringExpContext:
@@ -211,6 +213,44 @@ func (tc *TypeChecker) inferFuncExp(
 		sign.Returns,
 		line, col, text,
 	), nil
+}
+
+func (tc *TypeChecker) inferArrIndexExp(
+	e *parser.ArrIndexExpContext, line, col int, text string,
+) (*tast.ArrIndexExp, error) {
+	exp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	currentType := exp.Type()
+	var idxExps []tast.Exp
+
+	for i, idx := range e.AllArrayIndex() {
+		idxExp, err := tc.inferExp(idx.Exp())
+		if err != nil {
+			return nil, err
+		}
+
+		if idxExp.Type() != tast.Int {
+			return nil, fmt.Errorf(
+				"array index access at dimension %d must be integer type at "+
+					"%d:%d near %s", i, line, col, text,
+			)
+		}
+		idxExps = append(idxExps, idxExp)
+
+		arrType, ok := currentType.(*tast.ArrayType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"array index mismatch at dimension %d at %d:%d near %s "+
+					", expected array type but got %sa instead",
+				i, line, col, text, currentType.String(),
+			)
+		}
+		currentType = arrType.Elem
+	}
+
+	return tast.NewArrIndexExp(exp, idxExps, currentType, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferFieldExp(

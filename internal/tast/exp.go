@@ -283,6 +283,40 @@ func NewFuncExp(
 // check that FuncExp implements Exp
 var _ Exp = (*FuncExp)(nil)
 
+// ArrIndexExp represents an array element access expression in the TAST.
+type ArrIndexExp struct {
+	Exp     Exp   // Array expression
+	IdxExps []Exp // Index expressions for each dimension
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*ArrIndexExp) expNode()           {}
+func (ArrIndexExp) HasSideEffect() bool { return false }
+
+// NewArrIndexExp creates a new ArrIndexExp node with the given array expression,
+// index expressions, result type, and source location.
+func NewArrIndexExp(
+	exp Exp,
+	idxExps []Exp,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *ArrIndexExp {
+	return &ArrIndexExp{
+		Exp:     exp,
+		IdxExps: idxExps,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that ArrIndexExp implements Exp
+var _ Exp = (*ArrIndexExp)(nil)
+
 // StringExp represents a string literal expression node in the TAST.
 type StringExp struct {
 	Value string // String value
