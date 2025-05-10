@@ -753,3 +753,42 @@ func NewAssignExp(
 
 // check that AssignExp implements Exp
 var _ Exp = (*AssignExp)(nil)
+
+// ArrAssignExp represents an array access assignment expression node in the
+// TAST.
+type ArrAssignExp struct {
+	ArrExp  Exp   // Array expression
+	IdxExps []Exp // Index expressions for each dimension
+	AssExp  Exp   // Expression to assign to accessed array element
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*ArrAssignExp) expNode()           {}
+func (ArrAssignExp) HasSideEffect() bool { return true }
+
+// NewArrAssignExp creates a new ArrAssignExp node with the given array
+// expression to assign, indexing dimension expression, expression to assign,
+// type, and source location.
+func NewArrAssignExp(
+	arrExp Exp,
+	idxExps []Exp,
+	assExp Exp,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *ArrAssignExp {
+	return &ArrAssignExp{
+		ArrExp:  arrExp,
+		IdxExps: idxExps,
+		AssExp:  assExp,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that ArrAssignExp implements Exp
+var _ Exp = (*ArrAssignExp)(nil)

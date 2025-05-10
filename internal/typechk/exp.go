@@ -55,6 +55,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferOrExp(e, line, col, text)
 	case *parser.AssignExpContext:
 		return tc.inferAssignExp(e, line, col, text)
+	case *parser.ArrAssignExpContext:
+		return tc.inferArrAssignExp(e, line, col, text)
 	default:
 		return nil, fmt.Errorf(
 			"inferExp: unhandled exp type %T at %d:%d near '%s'",
@@ -693,6 +695,37 @@ func (tc *TypeChecker) inferAssignExp(
 		varType,
 		line, col, text,
 	), nil
+}
+
+func (tc *TypeChecker) inferArrAssignExp(
+	e *parser.ArrAssignExpContext, line, col int, text string,
+) (*tast.ArrAssignExp, error) {
+
+	arrExp, err := tc.inferExp(e.Exp(0))
+	if err != nil {
+		return nil, err
+	}
+	typ, idxExps, err := tc.inferArrayIndexing(
+		arrExp,
+		e.AllArrayIndex(),
+		line, col, text,
+	)
+	if err != nil {
+		return nil, err
+	}
+	assExp, err := tc.inferExp(e.Exp(1))
+	if err != nil {
+		return nil, err
+	}
+	if !isConvertible(typ, assExp.Type()) {
+		return nil, fmt.Errorf(
+			"array access assignment with wrong type at %d:%d near %s, "+
+				"expected type %s but got type %s",
+			line, col, text, typ.String(), assExp.Type().String(),
+		)
+	}
+	return tast.NewArrAssignExp(arrExp, idxExps, assExp, typ, line, col, text),
+		nil
 }
 
 func promoteExp(exp tast.Exp, typ tast.Type) tast.Exp {
