@@ -114,3 +114,11 @@ func extractIncDecOp(opCtx parser.IIncDecOpContext) (tast.Op, error) {
 		return 0, fmt.Errorf("unhandled inc/dec operator type %T", opCtx)
 	}
 }
+
+func promoteExp(exp tast.Exp, typ tast.Type) tast.Exp {
+	if exp.Type() == tast.Int && typ == tast.Double {
+		return tast.NewIntToDoubleExp(exp)
+	}
+	return exp
+}
+
