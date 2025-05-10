@@ -226,35 +226,15 @@ func (tc *TypeChecker) inferArrIndexExp(
 	if err != nil {
 		return nil, err
 	}
-	currentType := exp.Type()
-	var idxExps []tast.Exp
-
-	for i, idx := range e.AllArrayIndex() {
-		idxExp, err := tc.inferExp(idx.Exp())
-		if err != nil {
-			return nil, err
-		}
-
-		if idxExp.Type() != tast.Int {
-			return nil, fmt.Errorf(
-				"array index access at dimension %d must be integer type at "+
-					"%d:%d near %s", i, line, col, text,
-			)
-		}
-		idxExps = append(idxExps, idxExp)
-
-		arrType, ok := currentType.(*tast.ArrayType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"array index mismatch at dimension %d at %d:%d near %s "+
-					", expected array type but got %s instead",
-				i, line, col, text, currentType.String(),
-			)
-		}
-		currentType = arrType.Elem
+	typ, idxExps, err := tc.inferArrayIndexing(
+		exp,
+		e.AllArrayIndex(),
+		line, col, text,
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	return tast.NewArrIndexExp(exp, idxExps, currentType, line, col, text), nil
+	return tast.NewArrIndexExp(exp, idxExps, typ, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferFieldExp(
@@ -368,32 +348,13 @@ func (tc *TypeChecker) inferArrPostExp(
 	if err != nil {
 		return nil, err
 	}
-	typ := arrayExp.Type()
-	var idxExps []tast.Exp
-
-	for i, idx := range e.AllArrayIndex() {
-		idxExp, err := tc.inferExp(idx.Exp())
-		if err != nil {
-			return nil, err
-		}
-
-		if idxExp.Type() != tast.Int {
-			return nil, fmt.Errorf(
-				"array index access at dimension %d must be integer type at "+
-					"%d:%d near %s", i, line, col, text,
-			)
-		}
-		idxExps = append(idxExps, idxExp)
-
-		arrType, ok := typ.(*tast.ArrayType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"array index mismatch at dimension %d at %d:%d near %s "+
-					", expected array type but got %s instead",
-				i, line, col, text, typ.String(),
-			)
-		}
-		typ = arrType.Elem
+	typ, idxExps, err := tc.inferArrayIndexing(
+		arrayExp,
+		e.AllArrayIndex(),
+		line, col, text,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	if typ != tast.Int { //&& typ != tast.Double {
@@ -456,32 +417,14 @@ func (tc *TypeChecker) inferArrPreExp(
 	if err != nil {
 		return nil, err
 	}
-	typ := arrayExp.Type()
-	var idxExps []tast.Exp
 
-	for i, idx := range e.AllArrayIndex() {
-		idxExp, err := tc.inferExp(idx.Exp())
-		if err != nil {
-			return nil, err
-		}
-
-		if idxExp.Type() != tast.Int {
-			return nil, fmt.Errorf(
-				"array index access at dimension %d must be integer type at "+
-					"%d:%d near %s", i, line, col, text,
-			)
-		}
-		idxExps = append(idxExps, idxExp)
-
-		arrType, ok := typ.(*tast.ArrayType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"array index mismatch at dimension %d at %d:%d near %s "+
-					", expected array type but got %s instead",
-				i, line, col, text, typ.String(),
-			)
-		}
-		typ = arrType.Elem
+	typ, idxExps, err := tc.inferArrayIndexing(
+		arrayExp,
+		e.AllArrayIndex(),
+		line, col, text,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	if typ != tast.Int { //&& typ != tast.Double {
@@ -789,4 +732,40 @@ func promoteExp(exp tast.Exp, typ tast.Type) tast.Exp {
 		return tast.NewIntToDoubleExp(exp)
 	}
 	return exp
+}
+
+func (tc *TypeChecker) inferArrayIndexing(
+	arrayExp tast.Exp,
+	allArrayIndexContext []parser.IArrayIndexContext,
+	line, col int, text string,
+) (tast.Type, []tast.Exp, error) {
+
+	currentType := arrayExp.Type()
+	var idxExps []tast.Exp
+
+	for i, idx := range allArrayIndexContext {
+		idxExp, err := tc.inferExp(idx.Exp())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if idxExp.Type() != tast.Int {
+			return nil, nil, fmt.Errorf(
+				"array index access at dimension %d must be integer type at "+
+					"%d:%d near %s", i, line, col, text,
+			)
+		}
+		idxExps = append(idxExps, idxExp)
+
+		arrType, ok := currentType.(*tast.ArrayType)
+		if !ok {
+			return nil, nil, fmt.Errorf(
+				"array index mismatch at dimension %d at %d:%d near %s "+
+					", expected array type but got %s instead",
+				i, line, col, text, currentType.String(),
+			)
+		}
+		currentType = arrType.Elem
+	}
+	return currentType, idxExps, nil
 }
