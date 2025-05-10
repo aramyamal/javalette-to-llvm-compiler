@@ -37,8 +37,12 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferNotExp(e, line, col, text)
 	case *parser.PostExpContext:
 		return tc.inferPostExp(e, line, col, text)
+	case *parser.ArrPostExpContext:
+		return tc.inferArrPostExp(e, line, col, text)
 	case *parser.PreExpContext:
 		return tc.inferPreExp(e, line, col, text)
+	case *parser.ArrPreExpContext:
+		return tc.inferArrPreExp(e, line, col, text)
 	case *parser.MulExpContext:
 		return tc.inferMulExp(e, line, col, text)
 	case *parser.AddExpContext:
@@ -243,7 +247,7 @@ func (tc *TypeChecker) inferArrIndexExp(
 		if !ok {
 			return nil, fmt.Errorf(
 				"array index mismatch at dimension %d at %d:%d near %s "+
-					", expected array type but got %sa instead",
+					", expected array type but got %s instead",
 				i, line, col, text, currentType.String(),
 			)
 		}
@@ -357,6 +361,63 @@ func (tc *TypeChecker) inferPostExp(
 	return tast.NewPostExp(varName, op, typ, line, col, text), nil
 }
 
+func (tc *TypeChecker) inferArrPostExp(
+	e *parser.ArrPostExpContext, line, col int, text string,
+) (*tast.ArrPostExp, error) {
+	arrayExp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	typ := arrayExp.Type()
+	var idxExps []tast.Exp
+
+	for i, idx := range e.AllArrayIndex() {
+		idxExp, err := tc.inferExp(idx.Exp())
+		if err != nil {
+			return nil, err
+		}
+
+		if idxExp.Type() != tast.Int {
+			return nil, fmt.Errorf(
+				"array index access at dimension %d must be integer type at "+
+					"%d:%d near %s", i, line, col, text,
+			)
+		}
+		idxExps = append(idxExps, idxExp)
+
+		arrType, ok := typ.(*tast.ArrayType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"array index mismatch at dimension %d at %d:%d near %s "+
+					", expected array type but got %s instead",
+				i, line, col, text, typ.String(),
+			)
+		}
+		typ = arrType.Elem
+	}
+
+	if typ != tast.Int { //&& typ != tast.Double {
+		return nil, fmt.Errorf(
+			// "'++' or '--' operation can only be done on int or double at "+
+			"'++' or '--' operation can only be done on int at "+
+				"%d:%d near '%s'", line, col, text,
+		)
+	}
+	var op tast.Op
+	switch e.IncDecOp().(type) {
+	case *parser.IncContext:
+		op = tast.OpInc
+	case *parser.DecContext:
+		op = tast.OpDec
+	default:
+		return nil, fmt.Errorf(
+			"unhandled postfix operator type %T at %d:%d",
+			e.IncDecOp(), line, col,
+		)
+	}
+	return tast.NewArrPostExp(arrayExp, idxExps, op, typ, line, col, text), nil
+}
+
 func (tc *TypeChecker) inferPreExp(
 	e *parser.PreExpContext, line, col int, text string,
 ) (*tast.PreExp, error) {
@@ -386,6 +447,63 @@ func (tc *TypeChecker) inferPreExp(
 		)
 	}
 	return tast.NewPreExp(varName, op, typ, line, col, text), nil
+}
+
+func (tc *TypeChecker) inferArrPreExp(
+	e *parser.ArrPreExpContext, line, col int, text string,
+) (*tast.ArrPreExp, error) {
+	arrayExp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	typ := arrayExp.Type()
+	var idxExps []tast.Exp
+
+	for i, idx := range e.AllArrayIndex() {
+		idxExp, err := tc.inferExp(idx.Exp())
+		if err != nil {
+			return nil, err
+		}
+
+		if idxExp.Type() != tast.Int {
+			return nil, fmt.Errorf(
+				"array index access at dimension %d must be integer type at "+
+					"%d:%d near %s", i, line, col, text,
+			)
+		}
+		idxExps = append(idxExps, idxExp)
+
+		arrType, ok := typ.(*tast.ArrayType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"array index mismatch at dimension %d at %d:%d near %s "+
+					", expected array type but got %s instead",
+				i, line, col, text, typ.String(),
+			)
+		}
+		typ = arrType.Elem
+	}
+
+	if typ != tast.Int { //&& typ != tast.Double {
+		return nil, fmt.Errorf(
+			// "'++' or '--' operation can only be done on int or double at "+
+			"'++' or '--' operation can only be done on int at "+
+				"%d:%d near '%s'", line, col, text,
+		)
+	}
+	var op tast.Op
+	switch e.IncDecOp().(type) {
+	case *parser.IncContext:
+		op = tast.OpInc
+	case *parser.DecContext:
+		op = tast.OpDec
+	default:
+		return nil, fmt.Errorf(
+			"unhandled postfix operator type %T at %d:%d",
+			e.IncDecOp(), line, col,
+		)
+	}
+	return tast.NewArrPreExp(arrayExp, idxExps, op, typ, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferMulExp(

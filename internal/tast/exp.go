@@ -439,6 +439,44 @@ func NewPostExp(
 // check that PostExp implements Exp
 var _ Exp = (*PostExp)(nil)
 
+// ArrPostExp represents an expression of post-increment or post-decrement of
+// array access node in the TAST.
+type ArrPostExp struct {
+	Exp     Exp   // Array expression
+	IdxExps []Exp // Index expressions for each dimension
+	Op      Op    // Operation (OpInc or OpDec)
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*ArrPostExp) expNode()           {}
+func (ArrPostExp) HasSideEffect() bool { return true }
+
+// NewArrPostExp creates a new ArrPostExp node with the given array expression,
+// array access dimension expressions, operation, type, and source location.
+func NewArrPostExp(
+	exp Exp,
+	idxExps []Exp,
+	op Op,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *ArrPostExp {
+	return &ArrPostExp{
+		Exp:     exp,
+		IdxExps: idxExps,
+		Op:      op,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that ArrPostExp implements Exp
+var _ Exp = (*ArrPostExp)(nil)
+
 // PreExp represents a pre-increment or pre-decrement expression node in the
 // TAST.
 type PreExp struct {
@@ -473,6 +511,44 @@ func NewPreExp(
 
 // check that PreExp implements Exp
 var _ Exp = (*PreExp)(nil)
+
+// ArrPreExp represents an expression of pre-increment or pre-decrement of
+// array access node in the TAST.
+type ArrPreExp struct {
+	Exp     Exp   // Array expression
+	IdxExps []Exp // Index expressions for each dimension
+	Op      Op    // Operation (OpInc or OpDec)
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*ArrPreExp) expNode()           {}
+func (ArrPreExp) HasSideEffect() bool { return true }
+
+// NewArrPreExp creates a new ArrPreExp node with the given array expression,
+// array access dimension expressions, operation, type, and source location.
+func NewArrPreExp(
+	exp Exp,
+	idxExps []Exp,
+	op Op,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *ArrPreExp {
+	return &ArrPreExp{
+		Exp:     exp,
+		IdxExps: idxExps,
+		Op:      op,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that ArrPreExp implements Exp
+var _ Exp = (*ArrPreExp)(nil)
 
 // MulExp represents a multiplication, division, or modulo expression node in
 // the TAST.
