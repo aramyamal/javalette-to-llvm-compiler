@@ -103,3 +103,14 @@ func dominantType(type1, type2 tast.Type) (tast.Type, error) {
 		type1, type2,
 	)
 }
+
+func extractIncDecOp(opCtx parser.IIncDecOpContext) (tast.Op, error) {
+	switch opCtx.(type) {
+	case *parser.IncContext:
+		return tast.OpInc, nil
+	case *parser.DecContext:
+		return tast.OpDec, nil
+	default:
+		return 0, fmt.Errorf("unhandled inc/dec operator type %T", opCtx)
+	}
+}

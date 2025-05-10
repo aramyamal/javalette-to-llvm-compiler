@@ -326,17 +326,9 @@ func (tc *TypeChecker) inferPostExp(
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op tast.Op
-	switch e.IncDecOp().(type) {
-	case *parser.IncContext:
-		op = tast.OpInc
-	case *parser.DecContext:
-		op = tast.OpDec
-	default:
-		return nil, fmt.Errorf(
-			"unhandled postfix operator type %T at %d:%d",
-			e.IncDecOp(), line, col,
-		)
+	op, err := extractIncDecOp(e.IncDecOp())
+	if err != nil {
+		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
 	return tast.NewPostExp(varName, op, typ, line, col, text), nil
 }
@@ -364,17 +356,9 @@ func (tc *TypeChecker) inferArrPostExp(
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op tast.Op
-	switch e.IncDecOp().(type) {
-	case *parser.IncContext:
-		op = tast.OpInc
-	case *parser.DecContext:
-		op = tast.OpDec
-	default:
-		return nil, fmt.Errorf(
-			"unhandled postfix operator type %T at %d:%d",
-			e.IncDecOp(), line, col,
-		)
+	op, err := extractIncDecOp(e.IncDecOp())
+	if err != nil {
+		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
 	return tast.NewArrPostExp(arrayExp, idxExps, op, typ, line, col, text), nil
 }
@@ -395,17 +379,9 @@ func (tc *TypeChecker) inferPreExp(
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op tast.Op
-	switch e.IncDecOp().(type) {
-	case *parser.IncContext:
-		op = tast.OpInc
-	case *parser.DecContext:
-		op = tast.OpDec
-	default:
-		return nil, fmt.Errorf(
-			"unhandled prefix operator type %T at %d:%d",
-			e.IncDecOp(), line, col,
-		)
+	op, err := extractIncDecOp(e.IncDecOp())
+	if err != nil {
+		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
 	return tast.NewPreExp(varName, op, typ, line, col, text), nil
 }
@@ -434,17 +410,9 @@ func (tc *TypeChecker) inferArrPreExp(
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
-	var op tast.Op
-	switch e.IncDecOp().(type) {
-	case *parser.IncContext:
-		op = tast.OpInc
-	case *parser.DecContext:
-		op = tast.OpDec
-	default:
-		return nil, fmt.Errorf(
-			"unhandled prefix operator type %T at %d:%d",
-			e.IncDecOp(), line, col,
-		)
+	op, err := extractIncDecOp(e.IncDecOp())
+	if err != nil {
+		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
 	return tast.NewArrPreExp(arrayExp, idxExps, op, typ, line, col, text), nil
 }
