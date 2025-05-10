@@ -442,7 +442,7 @@ func (tc *TypeChecker) inferArrPreExp(
 		op = tast.OpDec
 	default:
 		return nil, fmt.Errorf(
-			"unhandled postfix operator type %T at %d:%d",
+			"unhandled prefix operator type %T at %d:%d",
 			e.IncDecOp(), line, col,
 		)
 	}
