@@ -70,12 +70,14 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 		if err := cg.compileDef(def); err != nil {
 			return err
 		}
-		if err := cg.handleStrings(); err != nil {
-			return err
-		}
 
 		cg.env.ExitContext()
 	}
+
+	if err := cg.write.WriteAll(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

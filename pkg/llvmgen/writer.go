@@ -1,17 +1,42 @@
 package llvmgen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
 )
 
 type Writer struct {
-	writer io.Writer
+	writer    io.Writer
+	typeBuf   *bytes.Buffer
+	globalBuf *bytes.Buffer
+	funcBuf   *bytes.Buffer
 }
 
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{writer: w}
+	return &Writer{
+		writer:    w,
+		typeBuf:   &bytes.Buffer{},
+		globalBuf: &bytes.Buffer{},
+		funcBuf:   &bytes.Buffer{},
+	}
+}
+
+func (w *Writer) WriteAll() error {
+	// Write type definitions
+	if _, err := w.typeBuf.WriteTo(w.writer); err != nil {
+		return err
+	}
+	// Write global variables/constants and function declarations
+	if _, err := w.globalBuf.WriteTo(w.writer); err != nil {
+		return err
+	}
+	// Write function definitions
+	if _, err := w.funcBuf.WriteTo(w.writer); err != nil {
+		return err
+	}
+	return nil
 }
 
 type FuncParam struct {
@@ -42,7 +67,7 @@ func Phi(val Value, lab string) PhiPair {
 }
 
 func (w *Writer) Newline() error {
-	_, err := w.writer.Write([]byte("\n"))
+	_, err := w.funcBuf.Write([]byte("\n"))
 	return err
 }
 
@@ -63,7 +88,7 @@ func (w *Writer) Declare(
 		funcName.String(),
 		llvmInputs,
 	)
-	if _, err := w.writer.Write([]byte(llvmInstr)); err != nil {
+	if _, err := w.globalBuf.Write([]byte(llvmInstr)); err != nil {
 		return err
 	}
 	return nil
@@ -85,18 +110,18 @@ func (w *Writer) StartDefine(
 		"define %s %s(%s){\n",
 		returns.String(), funcName.String(), strings.Join(llvmParams, ", "),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
 func (w *Writer) EndDefine() error {
-	_, err := w.writer.Write([]byte("}\n"))
+	_, err := w.funcBuf.Write([]byte("}\n"))
 	return err
 }
 
 func (w *Writer) Block(name string) error {
 	llvmInstr := fmt.Sprintf("\n%s:\n", name)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -106,7 +131,7 @@ func (w *Writer) Label(name string) error {
 
 func (w *Writer) Br(label string) error {
 	llvmInstr := fmt.Sprintf("\tbr label %%%s\n", label)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -122,7 +147,7 @@ func (w *Writer) BrIf(
 	llvmInstr := fmt.Sprintf(
 		"\tbr i1 %s, label %%%s, label %%%s\n", cond.String(), iftrue, iffalse,
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -144,7 +169,7 @@ func (w *Writer) Phi(
 		"\t%s = phi %s %s\n",
 		des.String(), typ.String(), strings.Join(froms, ", "),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -158,7 +183,7 @@ func (w *Writer) Ret(typ Type, val ...Value) error {
 		}
 		llvmInstr = fmt.Sprintf("\tret %s %s\n", typ.String(), val[0].String())
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -167,7 +192,7 @@ func (w *Writer) Constant(des Reg, typ Type, lit Value) error {
 		"\t%s = %s %s\n",
 		des.String(), typ.String(), lit.String(),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -186,7 +211,7 @@ func (w *Writer) GetElementPtr(
 		"\t%s = getelementptr %s, %s* %s, %s\n",
 		des.String(), t, t, from.String(), strings.Join(indices, ", "),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -195,13 +220,13 @@ func (w *Writer) InternalConstant(name Global, typ Type, val Value) error {
 		"%s = internal constant %s %s\n",
 		name.String(), typ.String(), val.String(),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.globalBuf.Write([]byte(llvmInstr))
 	return err
 }
 
 func (w *Writer) Alloca(des Reg, typ Type) error {
 	llvmInstr := fmt.Sprintf("\t%s = alloca %s\n", des.String(), typ.String())
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -211,7 +236,7 @@ func (w *Writer) Store(typ Type, value Value, ptr Reg) error {
 		"\tstore %s %s, %s* %s\n",
 		llvmType, value.String(), llvmType, ptr.String(),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -221,7 +246,7 @@ func (w *Writer) Load(des Reg, typ Type, ptr Reg) error {
 		"\t%s = load %s, %s* %s, align %d\n",
 		des.String(), llvmType, llvmType, ptr.String(), typ.alignment(),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -249,7 +274,7 @@ func (w *Writer) Call(
 			des.String(), typ.String(), funcName.String(), fmtArgs,
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -273,7 +298,7 @@ func (w *Writer) Sub(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -297,7 +322,7 @@ func (w *Writer) Add(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -321,7 +346,7 @@ func (w *Writer) Mul(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -345,7 +370,7 @@ func (w *Writer) Div(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -369,7 +394,7 @@ func (w *Writer) Rem(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -378,7 +403,7 @@ func (w *Writer) Xor(des Reg, typ Type, lhs, rhs Value) error {
 		"\t%s = xor %s %s, %s\n",
 		des.String(), typ.String(), lhs.String(), rhs.String(),
 	)
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -401,7 +426,7 @@ func (w *Writer) CmpLt(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -424,7 +449,7 @@ func (w *Writer) CmpLe(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -447,7 +472,7 @@ func (w *Writer) CmpGt(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -470,7 +495,7 @@ func (w *Writer) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -498,7 +523,7 @@ func (w *Writer) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
@@ -526,6 +551,6 @@ func (w *Writer) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
-	_, err := w.writer.Write([]byte(llvmInstr))
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
