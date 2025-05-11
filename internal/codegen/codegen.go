@@ -98,17 +98,3 @@ func (cg *CodeGenerator) emitVarAlloc(
 	}
 	return nil
 }
-
-func (cg *CodeGenerator) handleStrings() error {
-	for name, str := range cg.ng.strMap {
-		typ := llvmgen.Array(llvmgen.I8, len(str)+1)
-		if err := cg.write.Newline(); err != nil {
-			return err
-		}
-		if err := cg.write.InternalConstant(name, typ, str); err != nil {
-			return err
-		}
-	}
-	cg.ng.resetStrings()
-	return nil
-}

@@ -13,6 +13,7 @@ type NameGenerator struct {
 	lab    int
 	strIdx int
 	strMap map[llvmgen.Global]llvmgen.LitString
+	strRev map[string]llvmgen.Global
 	ptrMap map[string]int
 }
 
@@ -24,15 +25,20 @@ func NewNameGenerator() *NameGenerator {
 		lab:    0,
 		strIdx: 0,
 		strMap: make(map[llvmgen.Global]llvmgen.LitString),
+		strRev: make(map[string]llvmgen.Global),
 		ptrMap: make(map[string]int),
 	}
 }
 
-func (ng *NameGenerator) addString(content string) (llvmgen.Global, int) {
+func (ng *NameGenerator) getOrAddString(content string) (llvmgen.Global, int, bool) {
+	if name, ok := ng.strRev[content]; ok {
+		return name, len(content) + 1, true // string already existed
+	}
 	name := llvmgen.Global(fmt.Sprintf("s_%d", ng.strIdx))
 	ng.strIdx++
 	ng.strMap[name] = llvmgen.LitString(content)
-	return llvmgen.Global(name), len(content) + 1
+	ng.strRev[content] = name
+	return name, len(content) + 1, false // new string
 }
 
 func (ng *NameGenerator) ptrName(name string) llvmgen.Reg {
@@ -46,10 +52,6 @@ func (ng *NameGenerator) ptrName(name string) llvmgen.Reg {
 
 func (ng *NameGenerator) resetPtrs() {
 	ng.ptrMap = make(map[string]int)
-}
-
-func (ng *NameGenerator) resetStrings() {
-	ng.strMap = make(map[llvmgen.Global]llvmgen.LitString)
 }
 
 func (ng *NameGenerator) nextReg() llvmgen.Reg {

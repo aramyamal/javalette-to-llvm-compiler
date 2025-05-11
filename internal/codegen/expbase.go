@@ -11,7 +11,15 @@ func (cg *CodeGenerator) compileStringExp(e *tast.StringExp) (
 	llvmgen.Value, error,
 ) {
 	des := cg.ng.nextReg()
-	glbVar, strLen := cg.ng.addString(e.Value)
+	glbVar, strLen, alreadyWritten := cg.ng.getOrAddString(e.Value)
+	if !alreadyWritten {
+		typ := llvmgen.Array(llvmgen.I8, strLen)
+		if err := cg.write.InternalConstant(
+			glbVar, typ, llvmgen.LitString(e.Value),
+		); err != nil {
+			return nil, err
+		}
+	}
 	return des, cg.write.GetElementPtr(
 		des,
 		llvmgen.Array(llvmgen.I8, strLen),
