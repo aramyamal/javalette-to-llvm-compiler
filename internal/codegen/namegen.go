@@ -15,6 +15,7 @@ type NameGenerator struct {
 	strMap map[llvmgen.Global]llvmgen.LitString
 	strRev map[string]llvmgen.Global
 	ptrMap map[string]int
+	tmpVar int
 }
 
 // NewNameGenerator returns a new instance of NameGenerator with all counters
@@ -28,6 +29,16 @@ func NewNameGenerator() *NameGenerator {
 		strRev: make(map[string]llvmgen.Global),
 		ptrMap: make(map[string]int),
 	}
+}
+
+func (ng *NameGenerator) nextTmpVar() string {
+	name := fmt.Sprintf("tmp_%d", ng.tmpVar)
+	ng.tmpVar++
+	return name
+}
+
+func (ng *NameGenerator) resetTmpVar() {
+	ng.tmpVar = 0
 }
 
 func (ng *NameGenerator) getOrAddString(content string) (llvmgen.Global, int, bool) {
@@ -72,4 +83,11 @@ func (ng *NameGenerator) resetReg() {
 
 func (ng *NameGenerator) resetLab() {
 	ng.lab = 0
+}
+
+func (ng *NameGenerator) resetNames() {
+	ng.resetReg()
+	ng.resetLab()
+	ng.resetPtrs()
+	ng.resetTmpVar()
 }

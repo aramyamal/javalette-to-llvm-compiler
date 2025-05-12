@@ -14,9 +14,11 @@ import (
 // CodeGenerator generates LLVM code from the typed abstract syntax tree (TAST)
 // of a Javalette program, as produced by typechk.TypeChecker.
 type CodeGenerator struct {
-	env   *env.Environment[llvmgen.Reg]
-	write *llvmgen.Writer
-	ng    *NameGenerator
+	env         *env.Environment[llvmgen.Reg]
+	write       *llvmgen.Writer
+	ng          *NameGenerator
+	declTypes   map[string]struct{}
+	declGlobals map[string]struct{}
 }
 
 // NewCodeGenerator creates and returns a new CodeGenerator instance that writes
@@ -25,7 +27,13 @@ func NewCodeGenerator(w io.Writer) *CodeGenerator {
 	env := env.NewEnvironment[llvmgen.Reg]()
 	writer := llvmgen.NewWriter(w)
 	nameGen := NewNameGenerator()
-	return &CodeGenerator{env: env, write: writer, ng: nameGen}
+	return &CodeGenerator{
+		env:         env,
+		write:       writer,
+		ng:          nameGen,
+		declTypes:   make(map[string]struct{}),
+		declGlobals: make(map[string]struct{}),
+	}
 }
 
 // GenerateCode performs LLVM code generation for the given TAST prgm
@@ -38,20 +46,20 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 		llvmgen.Void, "printInt", llvmgen.I32); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(
+	if err := cg.emitFuncDecl(
 		llvmgen.Void, "printDouble", llvmgen.Double,
 	); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(
+	if err := cg.emitFuncDecl(
 		llvmgen.Void, "printString", llvmgen.I8Ptr,
 	); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(llvmgen.I32, "readInt"); err != nil {
+	if err := cg.emitFuncDecl(llvmgen.I32, "readInt"); err != nil {
 		return err
 	}
-	if err := cg.write.Declare(llvmgen.Double, "readDouble"); err != nil {
+	if err := cg.emitFuncDecl(llvmgen.Double, "readDouble"); err != nil {
 		return err
 	}
 	cg.env.EnterContext()
@@ -60,9 +68,7 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	for _, def := range prgm.Defs {
 		cg.env.EnterContext()
 
-		cg.ng.resetReg()
-		cg.ng.resetLab()
-		cg.ng.resetPtrs()
+		cg.ng.resetNames()
 
 		if err := cg.write.Newline(); err != nil {
 			return err
@@ -78,6 +84,44 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 		return err
 	}
 
+	return nil
+}
+
+func (cg *CodeGenerator) addGlobal(name string) bool {
+	if _, ok := cg.declGlobals[name]; !ok {
+		cg.declGlobals[name] = struct{}{}
+		return false
+	}
+	return true
+}
+
+func (cg *CodeGenerator) emitTypeDecl(structType llvmgen.StructType) error {
+	if _, ok := cg.declGlobals[structType.Name]; ok {
+		return nil
+	}
+	cg.declTypes[structType.Name] = struct{}{}
+	if err := cg.write.TypeDef(structType); err != nil {
+		return nil
+	}
+	return nil
+}
+
+func (cg *CodeGenerator) emitFuncDecl(
+	returns llvmgen.Type,
+	funcName string,
+	inputs ...llvmgen.Type,
+) error {
+	if _, ok := cg.declGlobals[funcName]; ok {
+		return nil
+	}
+	cg.declGlobals[funcName] = struct{}{}
+	if err := cg.write.Declare(
+		returns,
+		llvmgen.Global(funcName),
+		inputs...,
+	); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -10,7 +10,39 @@ import (
 func (cg *CodeGenerator) compileNewArrExp(
 	e *tast.NewArrExp,
 ) (llvmgen.Value, error) {
-	return nil, fmt.Errorf("compileNewArrExp: not yet implemented")
+
+	// calculate array lengths
+	var indices []llvmgen.Value
+	for _, exp := range e.Exps {
+		index, err := cg.compileExp(exp)
+		if err != nil {
+			return nil, err
+		}
+		indices = append(indices, index)
+	}
+	arrayStruct, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
+	if !ok {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileNewArrExp: "+
+				"expected llvm struct type for array at %d:%d near %s",
+			e.Line(), e.Col(), e.Text(),
+		)
+	}
+
+	// declare @calloc if not already declared before
+	if err := cg.emitFuncDecl(
+		llvmgen.Ptr(llvmgen.I8), "calloc", llvmgen.I64, llvmgen.I64,
+	); err != nil {
+		return nil, err
+	}
+
+	// emit the type declarations of the array wrappers if not already
+	// emitted before
+	if err := cg.emitArrayTypeDecls(arrayStruct); err != nil {
+		return nil, err
+	}
+
+	return cg.allocArray(*arrayStruct, indices, 0)
 }
 
 func (cg *CodeGenerator) compileArrIndexExp(
@@ -35,4 +67,275 @@ func (cg *CodeGenerator) compileArrAssignExp(
 	e *tast.ArrAssignExp,
 ) (llvmgen.Value, error) {
 	return nil, fmt.Errorf("compileArrAssignExp: not yet implemented")
+}
+
+func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
+	structType, ok := typ.(*llvmgen.StructType)
+	if !ok {
+		return nil // not a struct so do nothing
+	}
+
+	if err := cg.emitTypeDecl(*structType); err != nil {
+		return err
+	}
+	// if the second field is a pointer
+	if ptrType, ok := structType.Fields[1].(llvmgen.PtrType); ok {
+		// if pointer points to element that is a struct do recursive call
+		if _, isStruct := ptrType.Elem.(*llvmgen.StructType); isStruct {
+			return cg.emitArrayTypeDecls(ptrType.Elem)
+		}
+	}
+	return nil
+}
+
+func (cg *CodeGenerator) allocArray(
+	arrayStruct llvmgen.StructType,
+	dims []llvmgen.Value,
+	level int,
+) (llvmgen.Value, error) {
+	// get element type which is pointer to the next array struct or primitive
+	ptrType, ok := arrayStruct.Fields[1].(llvmgen.PtrType)
+	if !ok {
+		return nil, fmt.Errorf("")
+	}
+	elemType := ptrType.Elem
+
+	// emit length for this dimension in I64 to work with calloc
+	lengthReg := cg.ng.nextReg()
+	if err := cg.write.ZExt(
+		lengthReg,
+		llvmgen.I32,
+		dims[level],
+		llvmgen.I64,
+	); err != nil {
+		return nil, err
+	}
+
+	// compute size element in bytes
+	elemSize, err := cg.emitSizeOf(elemType)
+	if err != nil {
+		return nil, err
+	}
+
+	// allocate zero intialized memeory with calloc for the data
+	dataRaw := cg.ng.nextReg()
+	if err := cg.write.Call(
+		dataRaw,
+		llvmgen.Ptr(llvmgen.I8),
+		"calloc",
+		llvmgen.Arg(llvmgen.I64, lengthReg),
+		llvmgen.Arg(llvmgen.I64, elemSize),
+	); err != nil {
+		return nil, err
+	}
+
+	// bitcast the I8 pointer from calloc to correct pointer type
+	dataTypedPtr := cg.ng.nextReg()
+	if err := cg.write.Bitcast(
+		dataTypedPtr,
+		llvmgen.Ptr(llvmgen.I8),
+		dataRaw,
+		llvmgen.Ptr(elemType),
+	); err != nil {
+		return nil, err
+	}
+
+	// allocate array struct itself on heap
+	structSize, err := cg.emitSizeOf(&arrayStruct)
+	if err != nil {
+		return nil, err
+	}
+	arrStructRaw := cg.ng.nextReg()
+	if err := cg.write.Call(
+		arrStructRaw,
+		llvmgen.Ptr(llvmgen.I8),
+		"calloc",
+		llvmgen.Arg(llvmgen.I64, llvmgen.LitInt(1)),
+		llvmgen.Arg(llvmgen.I64, structSize),
+	); err != nil {
+		return nil, err
+	}
+	arrStructPtr := cg.ng.nextReg()
+	if err := cg.write.Bitcast(
+		arrStructPtr,
+		llvmgen.Ptr(llvmgen.I8),
+		arrStructRaw,
+		llvmgen.Ptr(&arrayStruct),
+	); err != nil {
+		return nil, err
+	}
+
+	// set length field (field 0)
+	lenFieldPtr := cg.ng.nextReg()
+	if err := cg.write.GetElementPtr(
+		lenFieldPtr,
+		&arrayStruct,
+		arrStructPtr,
+		llvmgen.LitInt(0), llvmgen.LitInt(0),
+	); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Store(
+		llvmgen.I32,
+		dims[level],
+		lenFieldPtr,
+	); err != nil {
+		return nil, err
+	}
+
+	// set pointer field (field 1)
+	ptrFieldPtr := cg.ng.nextReg()
+	if err := cg.write.GetElementPtr(
+		ptrFieldPtr,
+		&arrayStruct,
+		arrStructPtr,
+		llvmgen.LitInt(0), llvmgen.LitInt(1),
+	); err != nil {
+		return nil, err
+	}
+	if err := cg.write.Store(
+		llvmgen.Ptr(elemType),
+		dataTypedPtr,
+		ptrFieldPtr,
+	); err != nil {
+		return nil, err
+	}
+
+	// if this is not the innermost dimension, recursively allocate inner arrays
+	if level+1 < len(dims) {
+		// for (i = 0; i < dims[level]; ++i) {
+		//     data[i] = allocArray(nextStruct, dims, level+1)
+		// }
+
+		// create loop variable i
+		idxVarName := cg.ng.nextTmpVar()
+		if err := cg.emitVarAlloc(
+			idxVarName, llvmgen.I32, llvmgen.LitInt(0),
+		); err != nil {
+			return nil, err
+		}
+		idxPtr, ok := cg.env.LookupVar(idxVarName)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: could not load tmp variable from" +
+					"environment used in multi-dim array allocation",
+			)
+		}
+
+		// create blocks for looping
+		loopHead := cg.ng.nextLab()
+		loopBody := cg.ng.nextLab()
+		loopExit := cg.ng.nextLab()
+
+		// branch to header
+		if err := cg.write.Br(loopHead); err != nil {
+			return nil, err
+		}
+
+		// in header, compare i < dims[level]
+		if err := cg.write.Block(loopHead); err != nil {
+			return nil, err
+		}
+		idxVal := cg.ng.nextReg()
+		if err := cg.write.Load(idxVal, llvmgen.I32, idxPtr); err != nil {
+			return nil, err
+		}
+		cond := cg.ng.nextReg()
+		if err := cg.write.CmpLt(
+			cond,
+			llvmgen.I32,
+			idxVal,
+			dims[level],
+		); err != nil {
+			return nil, err
+		}
+		if err := cg.write.BrIf(
+			llvmgen.I1, cond, loopBody, loopExit,
+		); err != nil {
+			return nil, err
+		}
+
+		// loop body
+		cg.write.Block(loopBody)
+		elemPtr := cg.ng.nextReg()
+		if err := cg.write.GetElementPtr(
+			elemPtr, elemType, dataTypedPtr, idxVal,
+		); err != nil {
+			return nil, err
+		}
+		// recursively allocate next dimension
+		elemStruct, ok := elemType.(*llvmgen.StructType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error at allocArray:" +
+					"could not typecast element type to struct",
+			)
+		}
+		innerArr, err := cg.allocArray(*elemStruct, dims, level+1)
+		if err != nil {
+			return nil, err
+		}
+		// store the allocated inner array to elemPtr
+		if err := cg.write.Store(
+			llvmgen.Ptr(elemStruct), innerArr, elemPtr,
+		); err != nil {
+			return nil, err
+		}
+
+		// i++
+		nextIdx := cg.ng.nextReg()
+		if err := cg.write.Add(
+			nextIdx, llvmgen.I32, idxVal, llvmgen.LitInt(1),
+		); err != nil {
+			return nil, err
+		}
+		if err := cg.write.Store(llvmgen.I32, nextIdx, idxPtr); err != nil {
+			return nil, err
+		}
+		// branch to header
+		if err := cg.write.Br(loopHead); err != nil {
+			return nil, err
+		}
+
+		// set exit block
+		if err := cg.write.Block(loopExit); err != nil {
+			return nil, err
+		}
+	}
+
+	return arrStructPtr, nil
+}
+
+func (cg *CodeGenerator) emitSizeOf(typ llvmgen.Type) (llvmgen.Value, error) {
+
+	// use known size for primitive types
+	if primType, ok := typ.(llvmgen.PrimitiveType); ok {
+		return llvmgen.LitInt(primType.Size()), nil
+	}
+	// for other types, use getelementptr and ptrtoint trick
+
+	sizeReg := cg.ng.nextReg()
+	// emit ptr that with null as base pointer which gives address just
+	// past the first element, that is size of the type
+	sizePtrReg := cg.ng.nextReg()
+	if err := cg.write.GetElementPtr(
+		sizePtrReg,
+		typ,
+		llvmgen.Null(),
+		llvmgen.LitInt(1),
+	); err != nil {
+		return nil, err
+	}
+
+	// convert to int
+	if err := cg.write.PtrToInt(
+		sizeReg,
+		llvmgen.Ptr(typ),
+		llvmgen.I64,
+		sizePtrReg,
+	); err != nil {
+		return nil, err
+	}
+
+	return sizeReg, nil
 }

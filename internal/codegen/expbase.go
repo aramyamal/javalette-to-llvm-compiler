@@ -24,7 +24,7 @@ func (cg *CodeGenerator) compileStringExp(e *tast.StringExp) (
 		des,
 		llvmgen.Array(llvmgen.I8, strLen),
 		glbVar,
-		0, 0,
+		llvmgen.LitInt(0), llvmgen.LitInt(0),
 	)
 }
 

@@ -2,12 +2,25 @@ package codegen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 func toLlvmType(typ tast.Type) llvmgen.Type {
+
+	switch t := typ.(type) {
+	case *tast.ArrayType:
+		elemType := toLlvmType(t.Elem)
+		name := arrayName(elemType)
+		return llvmgen.TypeDef(
+			name,                      // generated name
+			llvmgen.I32,               // length field
+			llvmgen.Ptr(elemType), // pointer to data
+		)
+	}
+
 	switch typ {
 	case tast.Int:
 		return llvmgen.I32
@@ -16,7 +29,7 @@ func toLlvmType(typ tast.Type) llvmgen.Type {
 	case tast.Double:
 		return llvmgen.Double
 	case tast.String:
-		return llvmgen.I8Ptr
+		return llvmgen.Ptr(llvmgen.I8)
 	case tast.Void:
 		return llvmgen.Void
 	default:
@@ -25,4 +38,12 @@ func toLlvmType(typ tast.Type) llvmgen.Type {
 			typ.String(),
 		))
 	}
+}
+
+func arrayName(elem llvmgen.Type) string {
+	name := elem.String()
+	if strings.HasPrefix(name, "%") {
+		name = name[1:]
+	}
+	return "arrayof_" + name
 }

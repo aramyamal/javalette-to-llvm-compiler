@@ -1,6 +1,9 @@
 package codegen
 
-import "github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+import (
+	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
+)
 
 func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
 	if _, err := cg.compileExp(s.Exp); err != nil {
@@ -12,6 +15,12 @@ func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
 func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 	for _, item := range s.Items {
 		llvmType := toLlvmType(item.Type())
+
+		// for arrays, the type is a pointer
+		if _, isArray := item.Type().(*tast.ArrayType); isArray {
+			llvmType = llvmgen.Ptr(llvmType)
+		}
+
 		switch i := item.(type) {
 		case *tast.NoInitItem:
 			if err := cg.emitVarAlloc(
@@ -25,6 +34,7 @@ func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 			if err != nil {
 				return err
 			}
+
 			if err := cg.emitVarAlloc(i.Id, llvmType, value); err != nil {
 				return err
 			}

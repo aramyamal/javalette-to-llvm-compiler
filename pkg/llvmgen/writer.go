@@ -9,27 +9,28 @@ import (
 
 type Writer struct {
 	writer    io.Writer
-	typeBuf   *bytes.Buffer
 	globalBuf *bytes.Buffer
+	typeBuf   *bytes.Buffer
 	funcBuf   *bytes.Buffer
 }
 
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		writer:    w,
-		typeBuf:   &bytes.Buffer{},
 		globalBuf: &bytes.Buffer{},
+		typeBuf:   &bytes.Buffer{},
 		funcBuf:   &bytes.Buffer{},
 	}
 }
 
 func (w *Writer) WriteAll() error {
-	// Write type definitions
-	if _, err := w.typeBuf.WriteTo(w.writer); err != nil {
+	// Write global variables/constants and function declarations
+	w.globalBuf.Write([]byte("\n"))
+	if _, err := w.globalBuf.WriteTo(w.writer); err != nil {
 		return err
 	}
-	// Write global variables/constants and function declarations
-	if _, err := w.globalBuf.WriteTo(w.writer); err != nil {
+	// Write type definitions
+	if _, err := w.typeBuf.WriteTo(w.writer); err != nil {
 		return err
 	}
 	// Write function definitions
@@ -199,12 +200,12 @@ func (w *Writer) Constant(des Reg, typ Type, lit Value) error {
 func (w *Writer) GetElementPtr(
 	des Reg,
 	typ Type,
-	from Global,
-	idx ...int,
+	from Value,
+	idx ...Value,
 ) error {
 	var indices []string
 	for _, i := range idx {
-		indices = append(indices, fmt.Sprintf("i32 %d", i))
+		indices = append(indices, fmt.Sprintf("i32 %s", i.String()))
 	}
 	t := typ.String()
 	llvmInstr := fmt.Sprintf(
@@ -551,6 +552,66 @@ func (w *Writer) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
 			typ.String(),
 		)
 	}
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *Writer) Type(structType StructType) error {
+	var fieldStrs []string
+	for _, f := range structType.Fields {
+		fieldStrs = append(fieldStrs, f.String())
+	}
+	definition := fmt.Sprintf(
+		"%%%s = type { %s }\n",
+		structType.Name,
+		strings.Join(fieldStrs, ", "),
+	)
+	_, err := w.typeBuf.WriteString(definition)
+	return err
+}
+
+func (w Writer) TypeDef(structType StructType) error {
+	return w.Type(structType)
+}
+
+func (w *Writer) Bitcast(
+	des Reg,
+	fromType Type,
+	value Value,
+	toType Type,
+) error {
+	llvmInstr := fmt.Sprintf(
+		"\t%s = bitcast %s %s to %s\n",
+		des.String(), fromType.String(), value.String(), toType.String(),
+	)
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *Writer) PtrToInt(
+	des Reg,
+	fromType Type,
+	toType Type,
+	value Reg,
+) error {
+	llvmInstr := fmt.Sprintf(
+		"\t%s = ptrtoint %s %s to %s\n",
+		des.String(), fromType.String(), value.String(), toType.String(),
+	)
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
+	return err
+}
+
+func (w *Writer) ZExt(
+	dest Reg,
+	fromType Type,
+	value Value,
+	toType Type,
+) error {
+	llvmInstr := fmt.Sprintf(
+		"\t%s = zext %s %s to %s\n",
+		dest.String(), fromType.String(), value.String(), toType.String(),
+	)
 	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
