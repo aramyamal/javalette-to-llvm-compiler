@@ -72,7 +72,10 @@ func (cg *CodeGenerator) compileArrAssignExp(
 func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
 	structType, ok := typ.(*llvmgen.StructType)
 	if !ok {
-		return nil // not a struct so do nothing
+		return fmt.Errorf(
+			"internal compiler error: emitArrayTypeDecls expected a StructType"+
+				"but received %T", typ,
+		)
 	}
 
 	if err := cg.emitTypeDecl(*structType); err != nil {
