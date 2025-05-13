@@ -82,25 +82,22 @@ func (cg *CodeGenerator) compileArrIndexExp(
 
 		// pointer to data field
 		dataPtr := cg.ng.nextReg()
-		if err := cg.write.GetElementPtr(
+		cg.write.GetElementPtr(
 			dataPtr, structType, structType.Ptr(), currentPtr,
 			llvmgen.LitInt(0), llvmgen.LitInt(1),
-		); err != nil {
-			return nil, err
-		}
+		)
 
 		// load data field
 		dataFieldType := structType.Fields[1]
 		dataArray := cg.ng.nextReg()
 		ptrType, ok := dataFieldType.(llvmgen.PtrType)
 		if !ok {
-			return nil, fmt.Errorf("expected pointer type for array data field, got %s", dataFieldType.String())
+			return nil, fmt.Errorf(
+				"expected pointer type for array data field, got %s",
+				dataFieldType.String(),
+			)
 		}
-		if err := cg.write.Load(
-			dataArray, ptrType, ptrType, dataPtr,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.Load(dataArray, ptrType, ptrType, dataPtr)
 
 		// get pointer to element at current index
 		elementType, ok := dataFieldType.(llvmgen.PtrType)
@@ -113,31 +110,23 @@ func (cg *CodeGenerator) compileArrIndexExp(
 		}
 
 		elemPtr := cg.ng.nextReg()
-		if err := cg.write.GetElementPtr(
-			elemPtr, ptrType.Elem, ptrType, dataArray, idxValue,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.GetElementPtr(
+			elemPtr, ptrType.Elem, ptrType, dataArray,
+			idxValue,
+		)
 
 		// if this is the last dimension, load the value
 		if i == len(e.IdxExps)-1 {
 			elemValue := cg.ng.nextReg()
-			if err := cg.write.Load(
-				elemValue, elementType.Elem, elementType.Elem.Ptr(),
-				elemPtr,
-			); err != nil {
-				return nil, err
-			}
+			cg.write.Load(
+				elemValue, elementType.Elem, elementType.Elem.Ptr(), elemPtr,
+			)
 			return elemValue, nil
 		}
 
 		// otherwise load the next array struct pointer
 		nextArrayPtr := cg.ng.nextReg()
-		if err := cg.write.Load(
-			nextArrayPtr, elementType, elementType, elemPtr,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.Load(nextArrayPtr, elementType, elementType, elemPtr)
 
 		// update for next iteration
 		currentPtr = nextArrayPtr
@@ -207,80 +196,37 @@ func (cg *CodeGenerator) allocArray(
 
 	// emit length for this dimension in I64 to work with calloc
 	lengthReg := cg.ng.nextReg()
-	if err := cg.write.ZExt(
-		lengthReg,
-		llvmgen.I32,
-		dims[level],
-		llvmgen.I64,
-	); err != nil {
-		return nil, err
-	}
+	cg.write.ZExt(lengthReg, llvmgen.I32, dims[level], llvmgen.I64)
 
 	// compute size element in bytes
-	elemSize, err := cg.emitSizeOf(elemType)
-	if err != nil {
-		return nil, err
-	}
+	elemSize, _ := cg.emitSizeOf(elemType)
 
 	// allocate data array
-	dataTypedPtr, err := cg.emitCalloc(
-		lengthReg, elemSize, elemType,
-	)
-	if err != nil {
-		return nil, err
-	}
+	dataTypedPtr, _ := cg.emitCalloc(lengthReg, elemSize, elemType)
 
 	// allocate array struct itself on heap
-	structSize, err := cg.emitSizeOf(arrStructType)
-	if err != nil {
-		return nil, err
-	}
-	arrStructPtr, err := cg.emitCalloc(
+	structSize, _ := cg.emitSizeOf(arrStructType)
+	arrStructPtr, _ := cg.emitCalloc(
 		llvmgen.LitInt(1), structSize, arrStructType,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	// set length field (field 0)
 	lenFieldPtr := cg.ng.nextReg()
-	if err := cg.write.GetElementPtr(
-		lenFieldPtr,
-		arrStructType,
-		arrStructType.Ptr(),
-		arrStructPtr,
+	cg.write.GetElementPtr(
+		lenFieldPtr, arrStructType, arrStructType.Ptr(), arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(0),
-	); err != nil {
-		return nil, err
-	}
-	if err := cg.write.Store(
-		llvmgen.I32,
-		dims[level],
-		llvmgen.I32.Ptr(),
-		lenFieldPtr,
-	); err != nil {
-		return nil, err
-	}
+	)
+	cg.write.Store(llvmgen.I32, dims[level], llvmgen.I32.Ptr(), lenFieldPtr)
 
 	// set pointer field (field 1)
 	ptrFieldPtr := cg.ng.nextReg()
-	if err := cg.write.GetElementPtr(
-		ptrFieldPtr,
-		arrStructType,
-		arrStructType.Ptr(),
-		arrStructPtr,
+	cg.write.GetElementPtr(
+		ptrFieldPtr, arrStructType, arrStructType.Ptr(), arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(1),
-	); err != nil {
-		return nil, err
-	}
-	if err := cg.write.Store(
-		elemType.Ptr(),
-		dataTypedPtr,
-		elemType.Ptr().Ptr(),
-		ptrFieldPtr,
-	); err != nil {
-		return nil, err
-	}
+	)
+	cg.write.Store(
+		elemType.Ptr(), dataTypedPtr, elemType.Ptr().Ptr(), ptrFieldPtr,
+	)
 
 	// if this is not the innermost dimension, recursively allocate inner arrays
 	if level+1 < len(dims) {
@@ -302,43 +248,25 @@ func (cg *CodeGenerator) allocArray(
 		loopExit := cg.ng.nextLab()
 
 		// branch to header
-		if err := cg.write.Br(loopHead); err != nil {
-			return nil, err
-		}
+		cg.write.Br(loopHead)
 
 		// in header, compare i < dims[level]
-		if err := cg.write.Block(loopHead); err != nil {
-			return nil, err
-		}
+		cg.write.Block(loopHead)
+
 		idxVal := cg.ng.nextReg()
-		if err := cg.write.Load(
-			idxVal, llvmgen.I32, llvmgen.I32.Ptr(), idxPtr,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.Load(idxVal, llvmgen.I32, llvmgen.I32.Ptr(), idxPtr)
+
 		cond := cg.ng.nextReg()
-		if err := cg.write.CmpLt(
-			cond,
-			llvmgen.I32,
-			idxVal,
-			dims[level],
-		); err != nil {
-			return nil, err
-		}
-		if err := cg.write.BrIf(
-			llvmgen.I1, cond, loopBody, loopExit,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.CmpLt(cond, llvmgen.I32, idxVal, dims[level])
+		cg.write.BrIf(llvmgen.I1, cond, loopBody, loopExit)
 
 		// loop body
 		cg.write.Block(loopBody)
 		elemPtr := cg.ng.nextReg()
-		if err := cg.write.GetElementPtr(
-			elemPtr, elemType, elemType.Ptr(), dataTypedPtr, idxVal,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.GetElementPtr(
+			elemPtr, elemType, elemType.Ptr(), dataTypedPtr,
+			idxVal,
+		)
 		// recursively allocate next dimension
 		elemStruct, ok := elemType.(*llvmgen.StructType)
 		if !ok {
@@ -352,34 +280,20 @@ func (cg *CodeGenerator) allocArray(
 			return nil, err
 		}
 		// store the allocated inner array to elemPtr
-		if err := cg.write.Store(
-			elemStruct.Ptr(), innerArr,
-			elemStruct.Ptr().Ptr(), elemPtr,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.Store(
+			elemStruct.Ptr(), innerArr, elemStruct.Ptr().Ptr(), elemPtr,
+		)
 
 		// i++
 		nextIdx := cg.ng.nextReg()
-		if err := cg.write.Add(
-			nextIdx, llvmgen.I32, idxVal, llvmgen.LitInt(1),
-		); err != nil {
-			return nil, err
-		}
-		if err := cg.write.Store(
-			llvmgen.I32, nextIdx, llvmgen.I32.Ptr(), idxPtr,
-		); err != nil {
-			return nil, err
-		}
+		cg.write.Add(nextIdx, llvmgen.I32, idxVal, llvmgen.LitInt(1))
+		cg.write.Store(llvmgen.I32, nextIdx, llvmgen.I32.Ptr(), idxPtr)
+
 		// branch to header
-		if err := cg.write.Br(loopHead); err != nil {
-			return nil, err
-		}
+		cg.write.Br(loopHead)
 
 		// set exit block
-		if err := cg.write.Block(loopExit); err != nil {
-			return nil, err
-		}
+		cg.write.Block(loopExit)
 	}
 
 	return arrStructPtr, nil
@@ -397,25 +311,13 @@ func (cg *CodeGenerator) emitSizeOf(typ llvmgen.Type) (llvmgen.Value, error) {
 	// emit ptr that with null as base pointer which gives address just
 	// past the first element, that is size of the type
 	sizePtrReg := cg.ng.nextReg()
-	if err := cg.write.GetElementPtr(
-		sizePtrReg,
-		typ,
-		typ.Ptr(),
-		llvmgen.Null(),
+	cg.write.GetElementPtr(
+		sizePtrReg, typ, typ.Ptr(), llvmgen.Null(),
 		llvmgen.LitInt(1),
-	); err != nil {
-		return nil, err
-	}
+	)
 
 	// convert to int
-	if err := cg.write.PtrToInt(
-		sizeReg,
-		typ.Ptr(),
-		llvmgen.I64,
-		sizePtrReg,
-	); err != nil {
-		return nil, err
-	}
+	cg.write.PtrToInt(sizeReg, typ.Ptr(), llvmgen.I64, sizePtrReg)
 
 	return sizeReg, nil
 }
@@ -427,26 +329,15 @@ func (cg *CodeGenerator) emitCalloc(
 ) (llvmgen.Value, error) {
 	// allocate zero intialized memeory with calloc for the data
 	raw := cg.ng.nextReg()
-	if err := cg.write.Call(
-		raw,
-		llvmgen.I8.Ptr(),
-		"calloc",
+	cg.write.Call(
+		raw, llvmgen.I8.Ptr(), "calloc",
 		llvmgen.Arg(llvmgen.I64, numElems),
 		llvmgen.Arg(llvmgen.I64, elemSize),
-	); err != nil {
-		return nil, err
-	}
+	)
 
 	// bitcast the I8 pointer from calloc to correct pointer type
 	typed := cg.ng.nextReg()
-	if err := cg.write.Bitcast(
-		typed,
-		llvmgen.I8.Ptr(),
-		raw,
-		resultType.Ptr(),
-	); err != nil {
-		return nil, err
-	}
+	cg.write.Bitcast(typed, llvmgen.I8.Ptr(), raw, resultType.Ptr())
 
 	return typed, nil
 }

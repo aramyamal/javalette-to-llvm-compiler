@@ -42,26 +42,12 @@ func NewCodeGenerator(w io.Writer) *CodeGenerator {
 // GenerateCode returns it.
 func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 	// boilerplate std functions
-	if err := cg.write.Declare(
-		llvmgen.Void, "printInt", llvmgen.I32); err != nil {
-		return err
-	}
-	if err := cg.emitFuncDecl(
-		llvmgen.Void, "printDouble", llvmgen.Double,
-	); err != nil {
-		return err
-	}
-	if err := cg.emitFuncDecl(
-		llvmgen.Void, "printString", llvmgen.I8.Ptr(),
-	); err != nil {
-		return err
-	}
-	if err := cg.emitFuncDecl(llvmgen.I32, "readInt"); err != nil {
-		return err
-	}
-	if err := cg.emitFuncDecl(llvmgen.Double, "readDouble"); err != nil {
-		return err
-	}
+	cg.write.Declare(llvmgen.Void, "printInt", llvmgen.I32)
+	cg.emitFuncDecl(llvmgen.Void, "printDouble", llvmgen.Double)
+	cg.emitFuncDecl(llvmgen.Void, "printString", llvmgen.I8.Ptr())
+	cg.emitFuncDecl(llvmgen.I32, "readInt")
+	cg.emitFuncDecl(llvmgen.Double, "readDouble")
+
 	cg.env.EnterContext()
 	defer cg.env.ExitContext()
 
@@ -70,9 +56,8 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 
 		cg.ng.resetNames()
 
-		if err := cg.write.Newline(); err != nil {
-			return err
-		}
+		cg.write.Newline()
+
 		if err := cg.compileDef(def); err != nil {
 			return err
 		}
@@ -100,9 +85,7 @@ func (cg *CodeGenerator) emitTypeDecl(structType llvmgen.StructType) error {
 		return nil
 	}
 	cg.declTypes[structType.Name] = struct{}{}
-	if err := cg.write.TypeDef(structType); err != nil {
-		return nil
-	}
+	cg.write.TypeDef(structType)
 	return nil
 }
 
@@ -115,13 +98,7 @@ func (cg *CodeGenerator) emitFuncDecl(
 		return nil
 	}
 	cg.declGlobals[funcName] = struct{}{}
-	if err := cg.write.Declare(
-		returns,
-		llvmgen.Global(funcName),
-		inputs...,
-	); err != nil {
-		return err
-	}
+	cg.write.Declare(returns, llvmgen.Global(funcName), inputs...)
 	return nil
 }
 
@@ -132,13 +109,9 @@ func (cg *CodeGenerator) emitVarAlloc(
 ) (llvmgen.Reg, error) {
 	varPtr := cg.ng.ptrName(name)
 	cg.env.ExtendVar(name, varPtr)
-	if err := cg.write.Alloca(varPtr, typ); err != nil {
-		return "", err
-	}
+	cg.write.Alloca(varPtr, typ)
 	if len(init) > 0 && init[0] != nil {
-		if err := cg.write.Store(typ, init[0], typ.Ptr(), varPtr); err != nil {
-			return "", err
-		}
+		cg.write.Store(typ, init[0], typ.Ptr(), varPtr)
 	}
 	return varPtr, nil
 }
