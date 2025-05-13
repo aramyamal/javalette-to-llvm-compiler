@@ -615,3 +615,9 @@ func (w *Writer) ZExt(
 	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
+
+func (w *Writer) Comment(comment string) error {
+	llvmInstr := fmt.Sprintf("\t; %s\n", comment)
+	_, err := w.funcBuf.Write([]byte(llvmInstr))
+	return err
+}
