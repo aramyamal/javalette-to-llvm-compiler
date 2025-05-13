@@ -20,7 +20,7 @@ func (cg *CodeGenerator) compileNewArrExp(
 		}
 		indices = append(indices, index)
 	}
-	arrayStructType, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
+	arrStructType, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
 	if !ok {
 		return nil, fmt.Errorf(
 			"internal compiler error in compileNewArrExp: "+
@@ -38,11 +38,19 @@ func (cg *CodeGenerator) compileNewArrExp(
 
 	// emit the type declarations of the array wrappers if not already
 	// emitted before
-	if err := cg.emitArrayTypeDecls(arrayStructType); err != nil {
-		return nil, err
+	if err := cg.emitArrayTypeDecls(arrStructType); err != nil {
+		return nil, fmt.Errorf(
+			"%w at %d:%d near %s", err, e.Line(), e.Col(), e.Text(),
+		)
 	}
 
-	return cg.allocArray(*arrayStructType, indices, 0)
+	arrStructPtr, err := cg.allocArray(*arrStructType, indices, 0)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"%w at %d:%d near %s", err, e.Line(), e.Col(), e.Text(),
+		)
+	}
+	return arrStructPtr, nil
 }
 
 func (cg *CodeGenerator) compileArrIndexExp(
@@ -189,7 +197,11 @@ func (cg *CodeGenerator) allocArray(
 	// get element type which is pointer to the next array struct or primitive
 	ptrType, ok := arrStructType.Fields[1].(llvmgen.PtrType)
 	if !ok {
-		return nil, fmt.Errorf("")
+		return nil, fmt.Errorf(
+			"internal compiler error in allocArray: expected pointer type for"+
+				"array data field (field 1), but got %s",
+			arrStructType.Fields[1].String(),
+		)
 	}
 	elemType := ptrType.Elem
 
