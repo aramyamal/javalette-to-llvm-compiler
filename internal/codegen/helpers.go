@@ -2,6 +2,8 @@ package codegen
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
@@ -41,9 +43,17 @@ func toLlvmType(typ tast.Type) llvmgen.Type {
 }
 
 func arrayName(elem llvmgen.Type) string {
+	arrayRe := regexp.MustCompile(`^arrayof_(.+)_(\d+)D$`)
 	name := elem.String()
 	if strings.HasPrefix(name, "%") {
 		name = name[1:]
 	}
-	return "arrayof_" + name
+	if matches := arrayRe.FindStringSubmatch(name); matches != nil {
+		base := matches[1]
+		dimStr := matches[2]
+		if n, err := strconv.Atoi(dimStr); err == nil {
+			return fmt.Sprintf("arrayof_%s_%dD", base, n+1)
+		}
+	}
+	return "arrayof_" + name + "_1D"
 }
