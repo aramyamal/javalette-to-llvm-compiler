@@ -42,7 +42,16 @@ func (cg *CodeGenerator) compileIdentExp(e *tast.IdentExp) (
 			e.Id, e.Line(), e.Col(), e.Text(),
 		)
 	}
-	return des, cg.write.Load(des, toLlvmType(e.Type()), reg)
+	typ := toLlvmType(e.Type())
+
+	if _, isStruct := typ.(*llvmgen.StructType); isStruct {
+		// for arrays and structs, load a pointer to them
+		ptrType := typ.Ptr()
+		return des, cg.write.Load(des, ptrType, ptrType.Ptr(), reg)
+	} else {
+		// for primitive types, load the value
+		return des, cg.write.Load(des, typ, typ.Ptr(), reg)
+	}
 }
 
 func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (

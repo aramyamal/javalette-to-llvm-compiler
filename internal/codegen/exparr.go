@@ -48,7 +48,97 @@ func (cg *CodeGenerator) compileNewArrExp(
 func (cg *CodeGenerator) compileArrIndexExp(
 	e *tast.ArrIndexExp,
 ) (llvmgen.Value, error) {
-	return nil, fmt.Errorf("compileArrIndexExp: not yet implemented")
+
+	arrayPtr, err := cg.compileExp(e.Exp)
+	if err != nil {
+		return nil, err
+	}
+
+	currentPtr := arrayPtr
+	currentType := toLlvmType(e.Exp.Type())
+
+	for i, idxExp := range e.IdxExps {
+		idxValue, err := cg.compileExp(idxExp)
+		if err != nil {
+			return nil, err
+		}
+
+		structType, ok := currentType.(*llvmgen.StructType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: expected struct type for array at "+
+					"dimension %d, got %s",
+				i+1, currentType.String(),
+			)
+		}
+
+		// pointer to data field
+		dataPtr := cg.ng.nextReg()
+		if err := cg.write.GetElementPtr(
+			dataPtr, structType, structType.Ptr(), currentPtr,
+			llvmgen.LitInt(0), llvmgen.LitInt(1),
+		); err != nil {
+			return nil, err
+		}
+
+		// load data field
+		dataFieldType := structType.Fields[1]
+		dataArray := cg.ng.nextReg()
+		ptrType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return nil, fmt.Errorf("expected pointer type for array data field, got %s", dataFieldType.String())
+		}
+		if err := cg.write.Load(
+			dataArray, ptrType, ptrType, dataPtr,
+		); err != nil {
+			return nil, err
+		}
+
+		// get pointer to element at current index
+		elementType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: expected pointer type for data field"+
+					" at dimension %d, got %s",
+				i+1, dataFieldType.String(),
+			)
+		}
+
+		elemPtr := cg.ng.nextReg()
+		if err := cg.write.GetElementPtr(
+			elemPtr, ptrType.Elem, ptrType, dataArray, idxValue,
+		); err != nil {
+			return nil, err
+		}
+
+		// if this is the last dimension, load the value
+		if i == len(e.IdxExps)-1 {
+			elemValue := cg.ng.nextReg()
+			if err := cg.write.Load(
+				elemValue, elementType.Elem, elementType.Elem.Ptr(),
+				elemPtr,
+			); err != nil {
+				return nil, err
+			}
+			return elemValue, nil
+		}
+
+		// otherwise load the next array struct pointer
+		nextArrayPtr := cg.ng.nextReg()
+		if err := cg.write.Load(
+			nextArrayPtr, elementType, elementType, elemPtr,
+		); err != nil {
+			return nil, err
+		}
+
+		// update for next iteration
+		currentPtr = nextArrayPtr
+		currentType = elementType.Elem
+
+	}
+	return nil, fmt.Errorf(
+		"internal compiler error: no index expressions in array access",
+	)
 }
 
 func (cg *CodeGenerator) compileArrPostExp(
