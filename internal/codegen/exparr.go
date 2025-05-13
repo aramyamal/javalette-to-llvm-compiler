@@ -306,17 +306,10 @@ func (cg *CodeGenerator) allocArray(
 
 		// create loop variable i
 		idxVarName := cg.ng.nextTmpVar()
-		if err := cg.emitVarAlloc(
-			idxVarName, llvmgen.I32, llvmgen.LitInt(0),
-		); err != nil {
+		idxPtr, err := cg.emitVarAlloc(
+			idxVarName, llvmgen.I32, llvmgen.LitInt(0))
+		if err != nil {
 			return nil, err
-		}
-		idxPtr, ok := cg.env.LookupVar(idxVarName)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error: could not load tmp variable from" +
-					"environment used in multi-dim array allocation",
-			)
 		}
 
 		// create blocks for looping

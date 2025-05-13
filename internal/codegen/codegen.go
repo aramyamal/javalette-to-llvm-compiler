@@ -129,16 +129,16 @@ func (cg *CodeGenerator) emitVarAlloc(
 	name string,
 	typ llvmgen.Type,
 	init ...llvmgen.Value,
-) error {
+) (llvmgen.Reg, error) {
 	varPtr := cg.ng.ptrName(name)
 	cg.env.ExtendVar(name, varPtr)
 	if err := cg.write.Alloca(varPtr, typ); err != nil {
-		return err
+		return "", err
 	}
 	if len(init) > 0 && init[0] != nil {
 		if err := cg.write.Store(typ, init[0], typ.Ptr(), varPtr); err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	return varPtr, nil
 }

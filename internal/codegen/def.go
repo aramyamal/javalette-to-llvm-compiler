@@ -36,7 +36,7 @@ func (cg *CodeGenerator) compileFuncDef(d *tast.FuncDef) error {
 		return err
 	}
 	for _, param := range params {
-		if err := cg.emitVarAlloc(
+		if _, err := cg.emitVarAlloc(
 			string(param.Name),
 			param.Type,
 			param.Name,

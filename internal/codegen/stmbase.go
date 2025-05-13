@@ -22,7 +22,7 @@ func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 
 		switch i := item.(type) {
 		case *tast.NoInitItem:
-			if err := cg.emitVarAlloc(
+			if _, err := cg.emitVarAlloc(
 				i.Id, llvmType,
 				llvmType.ZeroValue(),
 			); err != nil {
@@ -34,7 +34,7 @@ func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 				return err
 			}
 
-			if err := cg.emitVarAlloc(i.Id, llvmType, value); err != nil {
+			if _, err := cg.emitVarAlloc(i.Id, llvmType, value); err != nil {
 				return err
 			}
 		}
