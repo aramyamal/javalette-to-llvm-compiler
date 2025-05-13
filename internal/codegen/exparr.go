@@ -20,7 +20,7 @@ func (cg *CodeGenerator) compileNewArrExp(
 		}
 		indices = append(indices, index)
 	}
-	arrayStruct, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
+	arrayStructType, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
 	if !ok {
 		return nil, fmt.Errorf(
 			"internal compiler error in compileNewArrExp: "+
@@ -38,11 +38,11 @@ func (cg *CodeGenerator) compileNewArrExp(
 
 	// emit the type declarations of the array wrappers if not already
 	// emitted before
-	if err := cg.emitArrayTypeDecls(arrayStruct); err != nil {
+	if err := cg.emitArrayTypeDecls(arrayStructType); err != nil {
 		return nil, err
 	}
 
-	return cg.allocArray(*arrayStruct, indices, 0)
+	return cg.allocArray(*arrayStructType, indices, 0)
 }
 
 func (cg *CodeGenerator) compileArrIndexExp(
@@ -182,12 +182,12 @@ func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
 }
 
 func (cg *CodeGenerator) allocArray(
-	arrayStruct llvmgen.StructType,
+	arrStructType llvmgen.StructType,
 	dims []llvmgen.Value,
 	level int,
 ) (llvmgen.Value, error) {
 	// get element type which is pointer to the next array struct or primitive
-	ptrType, ok := arrayStruct.Fields[1].(llvmgen.PtrType)
+	ptrType, ok := arrStructType.Fields[1].(llvmgen.PtrType)
 	if !ok {
 		return nil, fmt.Errorf("")
 	}
@@ -234,7 +234,7 @@ func (cg *CodeGenerator) allocArray(
 	}
 
 	// allocate array struct itself on heap
-	structSize, err := cg.emitSizeOf(&arrayStruct)
+	structSize, err := cg.emitSizeOf(&arrStructType)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (cg *CodeGenerator) allocArray(
 		arrStructPtr,
 		llvmgen.I8.Ptr(),
 		arrStructRaw,
-		(&arrayStruct).Ptr(),
+		(&arrStructType).Ptr(),
 	); err != nil {
 		return nil, err
 	}
@@ -262,8 +262,8 @@ func (cg *CodeGenerator) allocArray(
 	lenFieldPtr := cg.ng.nextReg()
 	if err := cg.write.GetElementPtr(
 		lenFieldPtr,
-		&arrayStruct,
-		(&arrayStruct).Ptr(),
+		&arrStructType,
+		(&arrStructType).Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(0),
 	); err != nil {
@@ -282,8 +282,8 @@ func (cg *CodeGenerator) allocArray(
 	ptrFieldPtr := cg.ng.nextReg()
 	if err := cg.write.GetElementPtr(
 		ptrFieldPtr,
-		&arrayStruct,
-		(&arrayStruct).Ptr(),
+		&arrStructType,
+		(&arrStructType).Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(1),
 	); err != nil {
