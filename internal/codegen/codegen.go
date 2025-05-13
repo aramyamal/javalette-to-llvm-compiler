@@ -52,7 +52,7 @@ func (cg *CodeGenerator) GenerateCode(prgm *tast.Prgm) error {
 		return err
 	}
 	if err := cg.emitFuncDecl(
-		llvmgen.Void, "printString", llvmgen.I8Ptr,
+		llvmgen.Void, "printString", llvmgen.I8.Ptr(),
 	); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (cg *CodeGenerator) emitVarAlloc(
 		return err
 	}
 	if len(init) > 0 && init[0] != nil {
-		if err := cg.write.Store(typ, init[0], varPtr); err != nil {
+		if err := cg.write.Store(typ, init[0], typ.Ptr(), varPtr); err != nil {
 			return err
 		}
 	}

@@ -23,6 +23,7 @@ func (cg *CodeGenerator) compileStringExp(e *tast.StringExp) (
 	return des, cg.write.GetElementPtr(
 		des,
 		llvmgen.Array(llvmgen.I8, strLen),
+		llvmgen.Array(llvmgen.I8, strLen).Ptr(),
 		glbVar,
 		llvmgen.LitInt(0), llvmgen.LitInt(0),
 	)
@@ -115,7 +116,7 @@ func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (
 	}
 	orig := cg.ng.nextReg()
 	typ := toLlvmType(e.Type())
-	if err := cg.write.Load(orig, typ, ptrName); err != nil {
+	if err := cg.write.Load(orig, typ, typ.Ptr(), ptrName); err != nil {
 		return nil, err
 	}
 	incrm := cg.ng.nextReg()
@@ -136,7 +137,7 @@ func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (
 		)
 
 	}
-	if err := cg.write.Store(typ, incrm, ptrName); err != nil {
+	if err := cg.write.Store(typ, incrm, typ.Ptr(), ptrName); err != nil {
 		return nil, err
 	}
 	return orig, nil
@@ -154,7 +155,7 @@ func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvmgen.Value, error) {
 	}
 	orig := cg.ng.nextReg()
 	typ := toLlvmType(e.Type())
-	if err := cg.write.Load(orig, typ, ptrName); err != nil {
+	if err := cg.write.Load(orig, typ, typ.Ptr(), ptrName); err != nil {
 		return nil, err
 	}
 	incrm := cg.ng.nextReg()
@@ -175,7 +176,7 @@ func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvmgen.Value, error) {
 		)
 
 	}
-	if err := cg.write.Store(typ, incrm, ptrName); err != nil {
+	if err := cg.write.Store(typ, incrm, typ.Ptr(), ptrName); err != nil {
 		return nil, err
 	}
 	return incrm, nil
@@ -415,7 +416,8 @@ func (cg *CodeGenerator) compileAssignExp(
 	if err != nil {
 		return nil, err
 	}
-	if err := cg.write.Store(toLlvmType(e.Type()), value, ptr); err != nil {
+	typ := toLlvmType(e.Type())
+	if err := cg.write.Store(typ, value, typ.Ptr(), ptr); err != nil {
 		return nil, err
 	}
 	return value, nil

@@ -15,9 +15,9 @@ func toLlvmType(typ tast.Type) llvmgen.Type {
 		elemType := toLlvmType(t.Elem)
 		name := arrayName(elemType)
 		return llvmgen.TypeDef(
-			name,                      // generated name
-			llvmgen.I32,               // length field
-			llvmgen.Ptr(elemType), // pointer to data
+			name,           // generated name
+			llvmgen.I32,    // length field
+			elemType.Ptr(), // pointer to data
 		)
 	}
 
@@ -29,7 +29,7 @@ func toLlvmType(typ tast.Type) llvmgen.Type {
 	case tast.Double:
 		return llvmgen.Double
 	case tast.String:
-		return llvmgen.Ptr(llvmgen.I8)
+		return llvmgen.I8.Ptr()
 	case tast.Void:
 		return llvmgen.Void
 	default:

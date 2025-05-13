@@ -31,7 +31,7 @@ func (cg *CodeGenerator) compileNewArrExp(
 
 	// declare @calloc if not already declared before
 	if err := cg.emitFuncDecl(
-		llvmgen.Ptr(llvmgen.I8), "calloc", llvmgen.I64, llvmgen.I64,
+		llvmgen.I8.Ptr(), "calloc", llvmgen.I64, llvmgen.I64,
 	); err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (cg *CodeGenerator) allocArray(
 	dataRaw := cg.ng.nextReg()
 	if err := cg.write.Call(
 		dataRaw,
-		llvmgen.Ptr(llvmgen.I8),
+		llvmgen.I8.Ptr(),
 		"calloc",
 		llvmgen.Arg(llvmgen.I64, lengthReg),
 		llvmgen.Arg(llvmgen.I64, elemSize),
@@ -136,9 +136,9 @@ func (cg *CodeGenerator) allocArray(
 	dataTypedPtr := cg.ng.nextReg()
 	if err := cg.write.Bitcast(
 		dataTypedPtr,
-		llvmgen.Ptr(llvmgen.I8),
+		llvmgen.I8.Ptr(),
 		dataRaw,
-		llvmgen.Ptr(elemType),
+		elemType.Ptr(),
 	); err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (cg *CodeGenerator) allocArray(
 	arrStructRaw := cg.ng.nextReg()
 	if err := cg.write.Call(
 		arrStructRaw,
-		llvmgen.Ptr(llvmgen.I8),
+		llvmgen.I8.Ptr(),
 		"calloc",
 		llvmgen.Arg(llvmgen.I64, llvmgen.LitInt(1)),
 		llvmgen.Arg(llvmgen.I64, structSize),
@@ -161,9 +161,9 @@ func (cg *CodeGenerator) allocArray(
 	arrStructPtr := cg.ng.nextReg()
 	if err := cg.write.Bitcast(
 		arrStructPtr,
-		llvmgen.Ptr(llvmgen.I8),
+		llvmgen.I8.Ptr(),
 		arrStructRaw,
-		llvmgen.Ptr(&arrayStruct),
+		(&arrayStruct).Ptr(),
 	); err != nil {
 		return nil, err
 	}
@@ -173,6 +173,7 @@ func (cg *CodeGenerator) allocArray(
 	if err := cg.write.GetElementPtr(
 		lenFieldPtr,
 		&arrayStruct,
+		(&arrayStruct).Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(0),
 	); err != nil {
@@ -181,6 +182,7 @@ func (cg *CodeGenerator) allocArray(
 	if err := cg.write.Store(
 		llvmgen.I32,
 		dims[level],
+		llvmgen.I32.Ptr(),
 		lenFieldPtr,
 	); err != nil {
 		return nil, err
@@ -191,14 +193,16 @@ func (cg *CodeGenerator) allocArray(
 	if err := cg.write.GetElementPtr(
 		ptrFieldPtr,
 		&arrayStruct,
+		(&arrayStruct).Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(1),
 	); err != nil {
 		return nil, err
 	}
 	if err := cg.write.Store(
-		llvmgen.Ptr(elemType),
+		elemType.Ptr(),
 		dataTypedPtr,
+		elemType.Ptr().Ptr(),
 		ptrFieldPtr,
 	); err != nil {
 		return nil, err
@@ -240,7 +244,9 @@ func (cg *CodeGenerator) allocArray(
 			return nil, err
 		}
 		idxVal := cg.ng.nextReg()
-		if err := cg.write.Load(idxVal, llvmgen.I32, idxPtr); err != nil {
+		if err := cg.write.Load(
+			idxVal, llvmgen.I32, llvmgen.I32.Ptr(), idxPtr,
+		); err != nil {
 			return nil, err
 		}
 		cond := cg.ng.nextReg()
@@ -262,7 +268,7 @@ func (cg *CodeGenerator) allocArray(
 		cg.write.Block(loopBody)
 		elemPtr := cg.ng.nextReg()
 		if err := cg.write.GetElementPtr(
-			elemPtr, elemType, dataTypedPtr, idxVal,
+			elemPtr, elemType, elemType.Ptr(), dataTypedPtr, idxVal,
 		); err != nil {
 			return nil, err
 		}
@@ -280,7 +286,8 @@ func (cg *CodeGenerator) allocArray(
 		}
 		// store the allocated inner array to elemPtr
 		if err := cg.write.Store(
-			llvmgen.Ptr(elemStruct), innerArr, elemPtr,
+			elemStruct.Ptr(), innerArr,
+			elemStruct.Ptr().Ptr(), elemPtr,
 		); err != nil {
 			return nil, err
 		}
@@ -292,7 +299,9 @@ func (cg *CodeGenerator) allocArray(
 		); err != nil {
 			return nil, err
 		}
-		if err := cg.write.Store(llvmgen.I32, nextIdx, idxPtr); err != nil {
+		if err := cg.write.Store(
+			llvmgen.I32, nextIdx, llvmgen.I32.Ptr(), idxPtr,
+		); err != nil {
 			return nil, err
 		}
 		// branch to header
@@ -324,6 +333,7 @@ func (cg *CodeGenerator) emitSizeOf(typ llvmgen.Type) (llvmgen.Value, error) {
 	if err := cg.write.GetElementPtr(
 		sizePtrReg,
 		typ,
+		typ.Ptr(),
 		llvmgen.Null(),
 		llvmgen.LitInt(1),
 	); err != nil {
@@ -333,7 +343,7 @@ func (cg *CodeGenerator) emitSizeOf(typ llvmgen.Type) (llvmgen.Value, error) {
 	// convert to int
 	if err := cg.write.PtrToInt(
 		sizeReg,
-		llvmgen.Ptr(typ),
+		typ.Ptr(),
 		llvmgen.I64,
 		sizePtrReg,
 	); err != nil {

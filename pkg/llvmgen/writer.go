@@ -199,7 +199,8 @@ func (w *Writer) Constant(des Reg, typ Type, lit Value) error {
 
 func (w *Writer) GetElementPtr(
 	des Reg,
-	typ Type,
+	elemType Type,
+	ptrType Type,
 	from Value,
 	idx ...Value,
 ) error {
@@ -207,10 +208,10 @@ func (w *Writer) GetElementPtr(
 	for _, i := range idx {
 		indices = append(indices, fmt.Sprintf("i32 %s", i.String()))
 	}
-	t := typ.String()
 	llvmInstr := fmt.Sprintf(
-		"\t%s = getelementptr %s, %s* %s, %s\n",
-		des.String(), t, t, from.String(), strings.Join(indices, ", "),
+		"\t%s = getelementptr %s, %s %s, %s\n",
+		des.String(), elemType.String(), ptrType.String(), from.String(),
+		strings.Join(indices, ", "),
 	)
 	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
@@ -231,21 +232,20 @@ func (w *Writer) Alloca(des Reg, typ Type) error {
 	return err
 }
 
-func (w *Writer) Store(typ Type, value Value, ptr Reg) error {
-	llvmType := typ.String()
+func (w *Writer) Store(elemType Type, value Value, ptrType Type, ptr Reg) error {
 	llvmInstr := fmt.Sprintf(
-		"\tstore %s %s, %s* %s\n",
-		llvmType, value.String(), llvmType, ptr.String(),
+		"\tstore %s %s, %s %s\n",
+		elemType.String(), value.String(), ptrType.String(), ptr.String(),
 	)
 	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err
 }
 
-func (w *Writer) Load(des Reg, typ Type, ptr Reg) error {
-	llvmType := typ.String()
+func (w *Writer) Load(des Reg, elemType Type, ptrType Type, ptr Reg) error {
 	llvmInstr := fmt.Sprintf(
-		"\t%s = load %s, %s* %s, align %d\n",
-		des.String(), llvmType, llvmType, ptr.String(), typ.alignment(),
+		"\t%s = load %s, %s %s, align %d\n",
+		des.String(), elemType.String(), ptrType.String(), ptr.String(),
+		elemType.alignment(),
 	)
 	_, err := w.funcBuf.Write([]byte(llvmInstr))
 	return err

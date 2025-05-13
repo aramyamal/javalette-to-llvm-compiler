@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
@@ -18,7 +17,7 @@ func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 
 		// for arrays, the type is a pointer
 		if _, isArray := item.Type().(*tast.ArrayType); isArray {
-			llvmType = llvmgen.Ptr(llvmType)
+			llvmType = llvmType.Ptr()
 		}
 
 		switch i := item.(type) {

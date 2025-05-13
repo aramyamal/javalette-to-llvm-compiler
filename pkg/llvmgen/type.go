@@ -8,6 +8,7 @@ type Type interface {
 	String() string
 	alignment() int
 	ZeroValue() Value
+	Ptr() PtrType
 }
 
 type PrimitiveType int
@@ -17,7 +18,6 @@ const (
 	I64
 	Double
 	I8
-	I8Ptr
 	I1
 	Void
 )
@@ -32,8 +32,6 @@ func (t PrimitiveType) String() string {
 		return "double"
 	case I8:
 		return "i8"
-	case I8Ptr:
-		return "i8*"
 	case I1:
 		return "i1"
 	case Void:
@@ -52,8 +50,6 @@ func (t PrimitiveType) alignment() int {
 	case Double:
 		return 8
 	case I8:
-		return 1
-	case I8Ptr:
 		return 1
 	case I1:
 		return 1
@@ -74,8 +70,6 @@ func (t PrimitiveType) ZeroValue() Value {
 		return LitDouble(0.0)
 	case I8:
 		return LitInt(0)
-	case I8Ptr:
-		panic("I8 pointer type does not have zero value")
 	case I1:
 		return LitBool(false)
 	case Void:
@@ -95,8 +89,6 @@ func (t PrimitiveType) Size() int {
 		return 8
 	case I8:
 		return 1
-	case I8Ptr:
-		return 8
 	case I1:
 		return 1
 	case Void:
@@ -104,6 +96,10 @@ func (t PrimitiveType) Size() int {
 	default:
 		panic(fmt.Sprintf("unsupported size of type: %d", t))
 	}
+}
+
+func (t PrimitiveType) Ptr() PtrType {
+	return ptr(t)
 }
 
 type ArrayType struct {
@@ -132,6 +128,10 @@ func (t ArrayType) alignment() int {
 
 func (t ArrayType) ZeroValue() Value {
 	panic("zero value of array not yet implemented")
+}
+
+func (t ArrayType) Ptr() PtrType {
+	return ptr(t)
 }
 
 type StructType struct {
@@ -166,6 +166,10 @@ func (t *StructType) Size() int {
 	panic("size calculation for struct type not yet implemented")
 }
 
+func (t *StructType) Ptr() PtrType {
+	return ptr(t)
+}
+
 type PtrType struct {
 	Elem Type
 }
@@ -186,7 +190,11 @@ func (p PtrType) Size() int {
 	return 8
 }
 
-func Ptr(elem Type) Type {
+func (p PtrType) Ptr() PtrType {
+	return ptr(p)
+}
+
+func ptr(elem Type) PtrType {
 	return PtrType{Elem: elem}
 }
 
