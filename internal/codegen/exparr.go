@@ -44,7 +44,7 @@ func (cg *CodeGenerator) compileNewArrExp(
 		)
 	}
 
-	arrStructPtr, err := cg.allocArray(*arrStructType, indices, 0)
+	arrStructPtr, err := cg.allocArray(arrStructType, indices, 0)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"%w at %d:%d near %s", err, e.Line(), e.Col(), e.Text(),
@@ -190,7 +190,7 @@ func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
 }
 
 func (cg *CodeGenerator) allocArray(
-	arrStructType llvmgen.StructType,
+	arrStructType *llvmgen.StructType,
 	dims []llvmgen.Value,
 	level int,
 ) (llvmgen.Value, error) {
@@ -222,51 +222,23 @@ func (cg *CodeGenerator) allocArray(
 		return nil, err
 	}
 
-	// allocate zero intialized memeory with calloc for the data
-	dataRaw := cg.ng.nextReg()
-	if err := cg.write.Call(
-		dataRaw,
-		llvmgen.I8.Ptr(),
-		"calloc",
-		llvmgen.Arg(llvmgen.I64, lengthReg),
-		llvmgen.Arg(llvmgen.I64, elemSize),
-	); err != nil {
-		return nil, err
-	}
-
-	// bitcast the I8 pointer from calloc to correct pointer type
-	dataTypedPtr := cg.ng.nextReg()
-	if err := cg.write.Bitcast(
-		dataTypedPtr,
-		llvmgen.I8.Ptr(),
-		dataRaw,
-		elemType.Ptr(),
-	); err != nil {
+	// allocate data array
+	dataTypedPtr, err := cg.emitCalloc(
+		lengthReg, elemSize, elemType,
+	)
+	if err != nil {
 		return nil, err
 	}
 
 	// allocate array struct itself on heap
-	structSize, err := cg.emitSizeOf(&arrStructType)
+	structSize, err := cg.emitSizeOf(arrStructType)
 	if err != nil {
 		return nil, err
 	}
-	arrStructRaw := cg.ng.nextReg()
-	if err := cg.write.Call(
-		arrStructRaw,
-		llvmgen.I8.Ptr(),
-		"calloc",
-		llvmgen.Arg(llvmgen.I64, llvmgen.LitInt(1)),
-		llvmgen.Arg(llvmgen.I64, structSize),
-	); err != nil {
-		return nil, err
-	}
-	arrStructPtr := cg.ng.nextReg()
-	if err := cg.write.Bitcast(
-		arrStructPtr,
-		llvmgen.I8.Ptr(),
-		arrStructRaw,
-		(&arrStructType).Ptr(),
-	); err != nil {
+	arrStructPtr, err := cg.emitCalloc(
+		llvmgen.LitInt(1), structSize, arrStructType,
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -274,8 +246,8 @@ func (cg *CodeGenerator) allocArray(
 	lenFieldPtr := cg.ng.nextReg()
 	if err := cg.write.GetElementPtr(
 		lenFieldPtr,
-		&arrStructType,
-		(&arrStructType).Ptr(),
+		arrStructType,
+		arrStructType.Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(0),
 	); err != nil {
@@ -294,8 +266,8 @@ func (cg *CodeGenerator) allocArray(
 	ptrFieldPtr := cg.ng.nextReg()
 	if err := cg.write.GetElementPtr(
 		ptrFieldPtr,
-		&arrStructType,
-		(&arrStructType).Ptr(),
+		arrStructType,
+		arrStructType.Ptr(),
 		arrStructPtr,
 		llvmgen.LitInt(0), llvmgen.LitInt(1),
 	); err != nil {
@@ -375,7 +347,7 @@ func (cg *CodeGenerator) allocArray(
 					"could not typecast element type to struct",
 			)
 		}
-		innerArr, err := cg.allocArray(*elemStruct, dims, level+1)
+		innerArr, err := cg.allocArray(elemStruct, dims, level+1)
 		if err != nil {
 			return nil, err
 		}
@@ -446,4 +418,35 @@ func (cg *CodeGenerator) emitSizeOf(typ llvmgen.Type) (llvmgen.Value, error) {
 	}
 
 	return sizeReg, nil
+}
+
+func (cg *CodeGenerator) emitCalloc(
+	numElems llvmgen.Value,
+	elemSize llvmgen.Value,
+	resultType llvmgen.Type,
+) (llvmgen.Value, error) {
+	// allocate zero intialized memeory with calloc for the data
+	raw := cg.ng.nextReg()
+	if err := cg.write.Call(
+		raw,
+		llvmgen.I8.Ptr(),
+		"calloc",
+		llvmgen.Arg(llvmgen.I64, numElems),
+		llvmgen.Arg(llvmgen.I64, elemSize),
+	); err != nil {
+		return nil, err
+	}
+
+	// bitcast the I8 pointer from calloc to correct pointer type
+	typed := cg.ng.nextReg()
+	if err := cg.write.Bitcast(
+		typed,
+		llvmgen.I8.Ptr(),
+		raw,
+		resultType.Ptr(),
+	); err != nil {
+		return nil, err
+	}
+
+	return typed, nil
 }
