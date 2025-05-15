@@ -67,12 +67,6 @@ func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (
 	return des, nil
 }
 
-func (cg *CodeGenerator) compileFieldExp(e *tast.FieldExp) (
-	llvmgen.Value, error,
-) {
-	return nil, fmt.Errorf("compileFieldExp: not yet implemented")
-}
-
 func (cg *CodeGenerator) compileNegExp(e *tast.NegExp) (llvmgen.Value, error) {
 	value, err := cg.compileExp(e.Exp)
 	if err != nil {
