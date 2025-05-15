@@ -29,21 +29,6 @@ func (cg *CodeGenerator) compileNewArrExp(
 		)
 	}
 
-	// declare @calloc if not already declared before
-	if err := cg.emitFuncDecl(
-		llvmgen.I8.Ptr(), "calloc", llvmgen.I64, llvmgen.I64,
-	); err != nil {
-		return nil, err
-	}
-
-	// emit the type declarations of the array wrappers if not already
-	// emitted before
-	if err := cg.emitArrayTypeDecls(arrStructType); err != nil {
-		return nil, fmt.Errorf(
-			"%w at %d:%d near %s", err, e.Line(), e.Col(), e.Text(),
-		)
-	}
-
 	arrStructPtr, err := cg.allocArray(arrStructType, indices, 0)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -195,6 +180,55 @@ func (cg *CodeGenerator) allocArray(
 	dims []llvmgen.Value,
 	level int,
 ) (llvmgen.Value, error) {
+
+	// declare @calloc if not already declared before
+	if err := cg.emitFuncDecl(
+		llvmgen.I8.Ptr(), "calloc", llvmgen.I64, llvmgen.I64,
+	); err != nil {
+		return nil, err
+	}
+
+	// emit the type declarations of the array wrappers if not already
+	// emitted before
+	if err := cg.emitArrayTypeDecls(arrStructType); err != nil {
+		return nil, err
+	}
+
+	// handle the empty dims case: allocate an empty array struct
+	if len(dims) == 0 {
+		// allocate array struct on heap
+		structSize, _ := cg.emitSizeOf(arrStructType)
+		arrStructPtr, _ := cg.emitCalloc(
+			llvmgen.LitInt(1), structSize, arrStructType,
+		)
+
+		// set length field (field 0) to 0
+		lenFieldPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			lenFieldPtr, arrStructType, arrStructType.Ptr(), arrStructPtr,
+			llvmgen.LitInt(0), llvmgen.LitInt(0),
+		)
+		cg.write.Store(llvmgen.I32, llvmgen.LitInt(0), llvmgen.I32.Ptr(), lenFieldPtr)
+
+		// set pointer field (field 1) to null
+		ptrFieldPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			ptrFieldPtr, arrStructType, arrStructType.Ptr(), arrStructPtr,
+			llvmgen.LitInt(0), llvmgen.LitInt(1),
+		)
+		ptrType, ok := arrStructType.Fields[1].(llvmgen.PtrType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error in allocArray: expected pointer type for"+
+					"array data field (field 1), but got %s",
+				arrStructType.Fields[1].String(),
+			)
+		}
+		cg.write.Store(ptrType, llvmgen.Null(), ptrType.Ptr(), ptrFieldPtr)
+
+		return arrStructPtr, nil
+	}
+
 	// get element type which is pointer to the next array struct or primitive
 	ptrType, ok := arrStructType.Fields[1].(llvmgen.PtrType)
 	if !ok {
@@ -352,4 +386,34 @@ func (cg *CodeGenerator) emitCalloc(
 	cg.write.Bitcast(typed, llvmgen.I8.Ptr(), raw, resultType.Ptr())
 
 	return typed, nil
+}
+
+func (cg *CodeGenerator) emitUninitStruct(
+	typ tast.Type,
+) (llvmgen.Value, error) {
+	llvmType := toLlvmType(typ)
+
+	// handle array types
+	if llvmStructType, isStruct := llvmType.(*llvmgen.StructType); isStruct {
+		if _, isTastArray := typ.(*tast.ArrayType); isTastArray {
+			// lllocate an empty array (length 0, data null)
+			arrPtr, err := cg.allocArray(llvmStructType, []llvmgen.Value{}, 0)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"emitUninitStruct: failed to allocate empty array: %w", err)
+			}
+			return arrPtr, nil
+		}
+
+		return nil, fmt.Errorf(
+			"emitUninitStruct: unsupported struct type (type: %s)",
+			typ.String(),
+		)
+	}
+
+	// not a struct/array type
+	return nil, fmt.Errorf(
+		"emitUninitStruct: not a struct or array type (type: %s)",
+		typ.String(),
+	)
 }

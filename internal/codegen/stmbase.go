@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
+	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
@@ -13,7 +14,8 @@ func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
 
 func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 	for _, item := range s.Items {
-		llvmType := toLlvmType(item.Type())
+		typ := item.Type()
+		llvmType := toLlvmType(typ)
 
 		// for arrays, the type is a pointer
 		if _, isArray := item.Type().(*tast.ArrayType); isArray {
@@ -22,10 +24,20 @@ func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 
 		switch i := item.(type) {
 		case *tast.NoInitItem:
-			if _, err := cg.emitVarAlloc(
-				i.Id, llvmType,
-				llvmType.ZeroValue(),
-			); err != nil {
+			var initValue llvmgen.Value
+			var err error
+
+			// handle array initialiation separately
+			if _, isArray := typ.(*tast.ArrayType); isArray {
+				initValue, err = cg.emitUninitStruct(typ)
+				if err != nil {
+					return err
+				}
+			} else {
+				initValue = llvmType.ZeroValue()
+			}
+
+			if _, err := cg.emitVarAlloc(i.Id, llvmType, initValue); err != nil {
 				return err
 			}
 		case *tast.InitItem:
