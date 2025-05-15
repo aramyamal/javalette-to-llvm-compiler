@@ -3,6 +3,7 @@ package tast
 // Type represents a Javalette type in the typed abstract syntax tree (TAST).
 type Type interface {
 	String() string
+	isTastType()
 }
 
 type FieldInfo struct {
@@ -15,6 +16,7 @@ func Field(typ Type, idx int) *FieldInfo {
 }
 
 type FieldProvider interface {
+	Type
 	FieldInfo(name string) (*FieldInfo, bool)
 	Fields() []string
 }
@@ -40,6 +42,7 @@ func (b BaseType) String() string {
 		"Void",
 	}[b]
 }
+func (b BaseType) isTastType() {}
 
 type ArrayType struct {
 	Elem Type
@@ -48,6 +51,7 @@ type ArrayType struct {
 func (a *ArrayType) String() string {
 	return a.Elem.String() + "[]"
 }
+func (b ArrayType) isTastType() {}
 
 func (a *ArrayType) FieldInfo(name string) (*FieldInfo, bool) {
 	if name == "length" {
@@ -123,3 +127,8 @@ func (op Op) Name() string {
 		"OpNe",
 	}[op]
 }
+
+// compile time interface implementation checks
+var _ Type = BaseType(0)
+var _ Type = (*ArrayType)(nil)
+var _ FieldProvider = (*ArrayType)(nil)
