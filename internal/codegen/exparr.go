@@ -97,7 +97,7 @@ func (cg *CodeGenerator) compileArrIndexExp(
 				dataFieldType.String(),
 			)
 		}
-		cg.write.Load(dataArray, ptrType, ptrType, dataPtr)
+		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
 
 		// get pointer to element at current index
 		elementType, ok := dataFieldType.(llvmgen.PtrType)
@@ -138,7 +138,7 @@ func (cg *CodeGenerator) compileArrIndexExp(
 
 		// otherwise load the next array struct pointer
 		nextArrayPtr := cg.ng.nextReg()
-		cg.write.Load(nextArrayPtr, elementType, elementType, elemPtr)
+		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
 
 		// update for next iteration
 		currentPtr = nextArrayPtr
