@@ -81,7 +81,7 @@ func (cg *CodeGenerator) addGlobal(name string) bool {
 }
 
 func (cg *CodeGenerator) emitTypeDecl(structType llvmgen.StructType) error {
-	if _, ok := cg.declGlobals[structType.Name]; ok {
+	if _, ok := cg.declTypes[structType.Name]; ok {
 		return nil
 	}
 	cg.declTypes[structType.Name] = struct{}{}
