@@ -25,7 +25,7 @@ func (cg *CodeGenerator) compileFuncDef(d *tast.FuncDef) error {
 	if err != nil {
 		return err
 	}
-	cg.write.StartDefine(toLlvmType(d.Type()), llvmgen.Global(d.Id), params...)
+	cg.write.StartDefine(toLlvmRetType(d.Type()), llvmgen.Global(d.Id), params...)
 	cg.write.Label("entry")
 	for _, param := range params {
 		cg.emitVarAlloc(string(param.Name), param.Type, param.Name)
@@ -43,7 +43,7 @@ func extractParams(args []tast.Arg) ([]llvmgen.FuncParam, error) {
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case *tast.ParamArg:
-			params = append(params, llvmgen.Param(toLlvmType(a.Type()), a.Id))
+			params = append(params, llvmgen.Param(toLlvmRetType(a.Type()), a.Id))
 		default:
 			return nil, fmt.Errorf(
 				"extractParams: unhandled Arg type %T at %d:%d near '%s'",

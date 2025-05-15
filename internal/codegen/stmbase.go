@@ -47,9 +47,9 @@ func (cg *CodeGenerator) compileReturnStm(s *tast.ReturnStm) error {
 	if err != nil {
 		return err
 	}
-	cg.write.Ret(toLlvmType(s.Type), reg)
-	return nil
 
+	cg.write.Ret(toLlvmRetType(s.Type), reg)
+	return nil
 }
 
 func (cg *CodeGenerator) compileWhileStm(s *tast.WhileStm) error {

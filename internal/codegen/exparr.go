@@ -117,6 +117,18 @@ func (cg *CodeGenerator) compileArrIndexExp(
 
 		// if this is the last dimension, load the value
 		if i == len(e.IdxExps)-1 {
+
+			// if the last value is an array/struct, load the pointer instead
+			if structType, ok := elementType.Elem.(*llvmgen.StructType); ok {
+				// elemPtr is a pointer to a pointer to the struct
+				arrPtr := cg.ng.nextReg()
+				cg.write.Load(
+					arrPtr, structType.Ptr(), structType.Ptr().Ptr(), elemPtr,
+				)
+				// arrPtr is pointer to actual struct
+				return arrPtr, nil
+			}
+
 			elemValue := cg.ng.nextReg()
 			cg.write.Load(
 				elemValue, elementType.Elem, elementType.Elem.Ptr(), elemPtr,

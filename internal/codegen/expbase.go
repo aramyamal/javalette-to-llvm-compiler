@@ -63,7 +63,7 @@ func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (
 	}
 
 	des := cg.ng.nextReg()
-	cg.write.Call(des, toLlvmType(e.Type()), llvmgen.Global(e.Id), args...)
+	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
 	return des, nil
 }
 

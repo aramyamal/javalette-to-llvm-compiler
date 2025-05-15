@@ -10,6 +10,13 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
+func toLlvmRetType(typ tast.Type) llvmgen.Type {
+	if _, isFieldProvider := typ.(tast.FieldProvider); isFieldProvider {
+		return toLlvmType(typ).Ptr()
+	}
+	return toLlvmType(typ)
+}
+
 func toLlvmType(typ tast.Type) llvmgen.Type {
 
 	switch t := typ.(type) {
@@ -47,6 +54,9 @@ func arrayName(elem llvmgen.Type) string {
 	name := elem.String()
 	if strings.HasPrefix(name, "%") {
 		name = name[1:]
+	}
+	if strings.HasSuffix(name, "*") {
+		name = name[:len(name)-1]
 	}
 	if matches := arrayRe.FindStringSubmatch(name); matches != nil {
 		base := matches[1]
