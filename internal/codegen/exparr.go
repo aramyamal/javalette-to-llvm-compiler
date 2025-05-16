@@ -42,205 +42,77 @@ func (cg *CodeGenerator) compileArrIndexExp(
 	e *tast.ArrIndexExp,
 ) (llvmgen.Value, error) {
 
-	arrayPtr, err := cg.compileExp(e.Exp)
+	arrPtr, err := cg.compileExp(e.Exp)
 	if err != nil {
 		return nil, err
 	}
+	arrType := toLlvmType(e.Exp.Type())
 
-	currentPtr := arrayPtr
-	currentType := toLlvmType(e.Exp.Type())
-
-	for i, idxExp := range e.IdxExps {
-		idxValue, err := cg.compileExp(idxExp)
-		if err != nil {
-			return nil, err
-		}
-
-		structType, ok := currentType.(*llvmgen.StructType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error in compileArrIndexExp: expected"+
-					"struct type for array at dimension %d, got %s",
-				i+1, currentType.String(),
-			)
-		}
-
-		// pointer to data field
-		dataPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			dataPtr, structType, structType.Ptr(), currentPtr,
-			llvmgen.LitInt(0), llvmgen.LitInt(1),
+	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
+				" %s", err, e.Line(), e.Col(), e.Text(),
 		)
-
-		// load data field
-		dataFieldType := structType.Fields[1]
-		dataArray := cg.ng.nextReg()
-		ptrType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"expected pointer type for array data field, got %s",
-				dataFieldType.String(),
-			)
-		}
-		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
-
-		// get pointer to element at current index
-		elementType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error: expected pointer type for data field"+
-					" at dimension %d, got %s",
-				i+1, dataFieldType.String(),
-			)
-		}
-
-		elemPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			elemPtr, ptrType.Elem, ptrType, dataArray,
-			idxValue,
-		)
-
-		// if this is the last dimension, load the value
-		if i == len(e.IdxExps)-1 {
-
-			// if the last value is an array/struct, load the pointer instead
-			if structType, ok := elementType.Elem.(*llvmgen.StructType); ok {
-				// elemPtr is a pointer to a pointer to the struct
-				arrPtr := cg.ng.nextReg()
-				cg.write.Load(
-					arrPtr, structType.Ptr(), structType.Ptr().Ptr(), elemPtr,
-				)
-				// arrPtr is pointer to actual struct
-				return arrPtr, nil
-			}
-
-			elemValue := cg.ng.nextReg()
-			cg.write.Load(
-				elemValue, elementType.Elem, elementType.Elem.Ptr(), elemPtr,
-			)
-			return elemValue, nil
-		}
-
-		// otherwise load the next array struct pointer
-		nextArrayPtr := cg.ng.nextReg()
-		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
-
-		// update for next iteration
-		currentPtr = nextArrayPtr
-		currentType = elementType.Elem
-
 	}
-	return nil, fmt.Errorf(
-		"internal compiler error in compileArrIndexExp: no index expressions "+
-			"in array access at %d:%d near %s", e.Line(), e.Col(), e.Type(),
-	)
+	// if the element is an array/struct, load the pointer instead
+	if structType, ok := elemType.(*llvmgen.StructType); ok {
+		// elemPtr is a pointer to a pointer to the struct
+		arrPtr := cg.ng.nextReg()
+		// arrPtr is pointer to actual struct
+		cg.write.Load(arrPtr, structType.Ptr(), structType.Ptr().Ptr(), elemPtr)
+		return arrPtr, nil
+	}
+
+	// otherwise load the primitive type value
+	elemValue := cg.ng.nextReg()
+	cg.write.Load(elemValue, elemType, elemType.Ptr(), elemPtr)
+	return elemValue, nil
 }
 
 func (cg *CodeGenerator) compileArrPostExp(
 	e *tast.ArrPostExp,
 ) (llvmgen.Value, error) {
 
-	arrayPtr, err := cg.compileExp(e.Exp)
+	arrPtr, err := cg.compileExp(e.Exp)
 	if err != nil {
 		return nil, err
 	}
+	arrType := toLlvmType(e.Exp.Type())
 
-	currentPtr := arrayPtr
-	currentType := toLlvmType(e.Exp.Type())
-
-	for i, idxExp := range e.IdxExps {
-		idxValue, err := cg.compileExp(idxExp)
-		if err != nil {
-			return nil, err
-		}
-
-		structType, ok := currentType.(*llvmgen.StructType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error in compileArrIndexExp: expected"+
-					"struct type for array at dimension %d, got %s",
-				i+1, currentType.String(),
-			)
-		}
-
-		// pointer to data field
-		dataPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			dataPtr, structType, structType.Ptr(), currentPtr,
-			llvmgen.LitInt(0), llvmgen.LitInt(1),
+	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
+				" %s", err, e.Line(), e.Col(), e.Type(),
 		)
-
-		// load data field
-		dataFieldType := structType.Fields[1]
-		dataArray := cg.ng.nextReg()
-		ptrType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"expected pointer type for array data field, got %s",
-				dataFieldType.String(),
-			)
-		}
-		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
-
-		// get pointer to element at current index
-		elementType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error: expected pointer type for data field"+
-					" at dimension %d, got %s",
-				i+1, dataFieldType.String(),
-			)
-		}
-
-		elemPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			elemPtr, ptrType.Elem, ptrType, dataArray,
-			idxValue,
-		)
-
-		// if this is the last dimension, load the value
-		if i == len(e.IdxExps)-1 {
-
-			elemValue := cg.ng.nextReg()
-			cg.write.Load(
-				elemValue, elementType.Elem, elementType.Elem.Ptr(), elemPtr,
-			)
-
-			// increment/decrement the value
-			newValue := cg.ng.nextReg()
-			if e.Op == tast.OpInc {
-				cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-			} else if e.Op == tast.OpDec {
-				cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-			} else {
-				return nil, fmt.Errorf(
-					"internal compiler error compileArrPostExp: can not handle"+
-						"operation %s at %d:%d near %s", e.Op.Name(),
-					e.Line(), e.Col(), e.Text(),
-				)
-			}
-
-			// store the incremented/decremented value in the element pointer
-			cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
-
-			return elemValue, nil
-		}
-
-		// otherwise load the next array struct pointer
-		nextArrayPtr := cg.ng.nextReg()
-		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
-
-		// update for next iteration
-		currentPtr = nextArrayPtr
-		currentType = elementType.Elem
-
 	}
-	return nil, fmt.Errorf(
-		"internal compiler error in compileArrIndexExp: no index expressions "+
-			"in array access at %d:%d near %s", e.Line(), e.Col(), e.Type(),
+
+	elemValue := cg.ng.nextReg()
+	cg.write.Load(
+		elemValue, elemType, elemType.Ptr(), elemPtr,
 	)
+
+	// increment/decrement the value
+	newValue := cg.ng.nextReg()
+	if e.Op == tast.OpInc {
+		cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+	} else if e.Op == tast.OpDec {
+		cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+	} else {
+		return nil, fmt.Errorf(
+			"internal compiler error compileArrPostExp: can not handle"+
+				"operation %s at %d:%d near %s", e.Op.Name(),
+			e.Line(), e.Col(), e.Text(),
+		)
+	}
+
+	// store the incremented/decremented value in the element pointer
+	cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
+
+	return elemValue, nil
 }
 
 func (cg *CodeGenerator) compileArrPreExp(
@@ -257,93 +129,28 @@ func (cg *CodeGenerator) compileArrAssignExp(
 		return nil, err
 	}
 
-	arrayPtr, err := cg.compileExp(e.ArrExp)
+	arrPtr, err := cg.compileExp(e.ArrExp)
 	if err != nil {
 		return nil, err
 	}
+	arrType := toLlvmType(e.ArrExp.Type())
 
-	currentPtr := arrayPtr
-	currentType := toLlvmType(e.ArrExp.Type())
-
-	for i, idxExp := range e.IdxExps {
-		idxValue, err := cg.compileExp(idxExp)
-		if err != nil {
-			return nil, err
-		}
-
-		structType, ok := currentType.(*llvmgen.StructType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error in compileArrAssignExp: expected"+
-					"struct type for array at dimension %d, got %s",
-				i+1, currentType.String(),
-			)
-		}
-
-		// pointer to data field
-		dataPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			dataPtr, structType, structType.Ptr(), currentPtr,
-			llvmgen.LitInt(0), llvmgen.LitInt(1),
+	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileArrAssignExp: %w at %d:%d near"+
+				" %s", err, e.Line(), e.Col(), e.Type(),
 		)
-
-		// load data field
-		dataFieldType := structType.Fields[1]
-		dataArray := cg.ng.nextReg()
-		ptrType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"expected pointer type for array data field, got %s",
-				dataFieldType.String(),
-			)
-		}
-		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
-
-		// get pointer to element at current index
-		elementType, ok := dataFieldType.(llvmgen.PtrType)
-		if !ok {
-			return nil, fmt.Errorf(
-				"internal compiler error: expected pointer type for data field"+
-					" at dimension %d, got %s",
-				i+1, dataFieldType.String(),
-			)
-		}
-
-		elemPtr := cg.ng.nextReg()
-		cg.write.GetElementPtr(
-			elemPtr, ptrType.Elem, ptrType, dataArray,
-			idxValue,
-		)
-
-		// if this is the last dimension, store the value
-		if i == len(e.IdxExps)-1 {
-			// If the element is a struct (i.e., nested array), store the pointer
-			if _, isStruct := elementType.Elem.(*llvmgen.StructType); isStruct {
-				// Store the pointer to the struct (assValue) into elemPtr
-				cg.write.Store(
-					elementType.Elem.Ptr(), assValue, elementType.Elem.Ptr().Ptr(), elemPtr,
-				)
-			} else {
-				// Store the primitive value
-				assType := toLlvmType(e.AssExp.Type())
-				cg.write.Store(assType, assValue, assType.Ptr(), elemPtr)
-			}
-			return assValue, nil
-		}
-
-		// otherwise load the next array struct pointer
-		nextArrayPtr := cg.ng.nextReg()
-		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
-
-		// update for next iteration
-		currentPtr = nextArrayPtr
-		currentType = elementType.Elem
-
 	}
-	return nil, fmt.Errorf(
-		"internal compiler error in compileArrAssignExp: no index expressions "+
-			"in array access at %d:%d near %s", e.Line(), e.Col(), e.Type(),
-	)
+	// if the element is a struct/array, store the pointer
+	if _, isStruct := elemType.(*llvmgen.StructType); isStruct {
+		cg.write.Store(elemType.Ptr(), assValue, elemType.Ptr().Ptr(), elemPtr)
+	} else {
+		// else store the primitive value
+		assType := toLlvmType(e.AssExp.Type())
+		cg.write.Store(assType, assValue, assType.Ptr(), elemPtr)
+	}
+	return assValue, nil
 }
 
 func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
@@ -609,4 +416,76 @@ func (cg *CodeGenerator) emitUninitStruct(
 		"emitUninitStruct: not a struct or array type (type: %s)",
 		typ.String(),
 	)
+}
+
+func (cg *CodeGenerator) emitArrElemPtr(
+	arrPtr llvmgen.Value,
+	arrType llvmgen.Type,
+	idxExps []tast.Exp,
+) (elemPtr llvmgen.Reg, elemElemType llvmgen.Type, err error) {
+	currentPtr := arrPtr
+	currentType := arrType
+
+	for i, idxExp := range idxExps {
+		idxValue, err := cg.compileExp(idxExp)
+		if err != nil {
+			return "", nil, err
+		}
+
+		structType, ok := currentType.(*llvmgen.StructType)
+		if !ok {
+			return "", nil, fmt.Errorf(
+				"expected struct type for array at dimension %d, got %s",
+				i+1, currentType.String(),
+			)
+		}
+
+		// pointer to data field
+		dataPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			dataPtr, structType, structType.Ptr(), currentPtr,
+			llvmgen.LitInt(0), llvmgen.LitInt(1),
+		)
+
+		// load data field
+		dataFieldType := structType.Fields[1]
+		dataArray := cg.ng.nextReg()
+		ptrType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return "", nil, fmt.Errorf(
+				"expected pointer type for array data field, got %s",
+				dataFieldType.String(),
+			)
+		}
+		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
+
+		// get pointer to element at current index
+		elementType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return "", nil, fmt.Errorf(
+				"expected pointer type for data field at dimension %d, got %s",
+				i+1, dataFieldType.String(),
+			)
+		}
+
+		elemPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			elemPtr, ptrType.Elem, ptrType, dataArray,
+			idxValue,
+		)
+
+		// If this is the last dimension, return the pointer and type
+		if i == len(idxExps)-1 {
+			return elemPtr, elementType.Elem, nil
+		}
+
+		// otherwise load the next array struct pointer
+		nextArrayPtr := cg.ng.nextReg()
+		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
+
+		// update for next iteration
+		currentPtr = nextArrayPtr
+		currentType = elementType.Elem
+	}
+	return "", nil, fmt.Errorf("no index expressions in array access")
 }
