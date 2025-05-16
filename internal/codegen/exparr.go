@@ -118,7 +118,46 @@ func (cg *CodeGenerator) compileArrPostExp(
 func (cg *CodeGenerator) compileArrPreExp(
 	e *tast.ArrPreExp,
 ) (llvmgen.Value, error) {
-	return nil, fmt.Errorf("compileArrPreExp: not yet implemented")
+
+	arrPtr, err := cg.compileExp(e.Exp)
+	if err != nil {
+		return nil, err
+	}
+	arrType := toLlvmType(e.Exp.Type())
+
+	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
+				" %s", err, e.Line(), e.Col(), e.Type(),
+		)
+	}
+
+	elemValue := cg.ng.nextReg()
+	cg.write.Load(
+		elemValue, elemType, elemType.Ptr(), elemPtr,
+	)
+
+	// increment/decrement the value
+	newValue := cg.ng.nextReg()
+	if e.Op == tast.OpInc {
+		cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+	} else if e.Op == tast.OpDec {
+		cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+	} else {
+		return nil, fmt.Errorf(
+			"internal compiler error compileArrPostExp: can not handle"+
+				"operation %s at %d:%d near %s", e.Op.Name(),
+			e.Line(), e.Col(), e.Text(),
+		)
+	}
+
+	// store the incremented/decremented value in the element pointer
+	cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
+
+	return newValue, nil
 }
 
 func (cg *CodeGenerator) compileArrAssignExp(
