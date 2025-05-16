@@ -59,8 +59,8 @@ func (cg *CodeGenerator) compileArrIndexExp(
 		structType, ok := currentType.(*llvmgen.StructType)
 		if !ok {
 			return nil, fmt.Errorf(
-				"internal compiler error: expected struct type for array at "+
-					"dimension %d, got %s",
+				"internal compiler error in compileArrIndexExp: expected"+
+					"struct type for array at dimension %d, got %s",
 				i+1, currentType.String(),
 			)
 		}
@@ -131,7 +131,8 @@ func (cg *CodeGenerator) compileArrIndexExp(
 
 	}
 	return nil, fmt.Errorf(
-		"internal compiler error: no index expressions in array access",
+		"internal compiler error in compileArrIndexExp: no index expressions "+
+			"in array access at %d:%d near %s", e.Line(), e.Col(), e.Type(),
 	)
 }
 
