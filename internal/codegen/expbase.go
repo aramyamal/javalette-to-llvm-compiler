@@ -59,7 +59,7 @@ func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, llvmgen.Arg(toLlvmType(exp.Type()), value))
+		args = append(args, llvmgen.Arg(toLlvmRetType(exp.Type()), value))
 	}
 
 	des := cg.ng.nextReg()
@@ -325,7 +325,7 @@ func (cg *CodeGenerator) compileAssignExp(
 	if err != nil {
 		return nil, err
 	}
-	typ := toLlvmType(e.Type())
+	typ := toLlvmRetType(e.Type())
 	cg.write.Store(typ, value, typ.Ptr(), ptr)
 	return value, nil
 }
