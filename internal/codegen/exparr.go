@@ -139,7 +139,108 @@ func (cg *CodeGenerator) compileArrIndexExp(
 func (cg *CodeGenerator) compileArrPostExp(
 	e *tast.ArrPostExp,
 ) (llvmgen.Value, error) {
-	return nil, fmt.Errorf("compileArrPostExp: not yet implemented")
+
+	arrayPtr, err := cg.compileExp(e.Exp)
+	if err != nil {
+		return nil, err
+	}
+
+	currentPtr := arrayPtr
+	currentType := toLlvmType(e.Exp.Type())
+
+	for i, idxExp := range e.IdxExps {
+		idxValue, err := cg.compileExp(idxExp)
+		if err != nil {
+			return nil, err
+		}
+
+		structType, ok := currentType.(*llvmgen.StructType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error in compileArrIndexExp: expected"+
+					"struct type for array at dimension %d, got %s",
+				i+1, currentType.String(),
+			)
+		}
+
+		// pointer to data field
+		dataPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			dataPtr, structType, structType.Ptr(), currentPtr,
+			llvmgen.LitInt(0), llvmgen.LitInt(1),
+		)
+
+		// load data field
+		dataFieldType := structType.Fields[1]
+		dataArray := cg.ng.nextReg()
+		ptrType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"expected pointer type for array data field, got %s",
+				dataFieldType.String(),
+			)
+		}
+		cg.write.Load(dataArray, ptrType, ptrType.Ptr(), dataPtr)
+
+		// get pointer to element at current index
+		elementType, ok := dataFieldType.(llvmgen.PtrType)
+		if !ok {
+			return nil, fmt.Errorf(
+				"internal compiler error: expected pointer type for data field"+
+					" at dimension %d, got %s",
+				i+1, dataFieldType.String(),
+			)
+		}
+
+		elemPtr := cg.ng.nextReg()
+		cg.write.GetElementPtr(
+			elemPtr, ptrType.Elem, ptrType, dataArray,
+			idxValue,
+		)
+
+		// if this is the last dimension, load the value
+		if i == len(e.IdxExps)-1 {
+
+			elemValue := cg.ng.nextReg()
+			cg.write.Load(
+				elemValue, elementType.Elem, elementType.Elem.Ptr(), elemPtr,
+			)
+
+			// increment/decrement the value
+			newValue := cg.ng.nextReg()
+			if e.Op == tast.OpInc {
+				cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+			} else if e.Op == tast.OpDec {
+				cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
+
+			} else {
+				return nil, fmt.Errorf(
+					"internal compiler error compileArrPostExp: can not handle"+
+						"operation %s at %d:%d near %s", e.Op.Name(),
+					e.Line(), e.Col(), e.Text(),
+				)
+			}
+
+			// store the incremented/decremented value in the element pointer
+			cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
+
+			return elemValue, nil
+		}
+
+		// otherwise load the next array struct pointer
+		nextArrayPtr := cg.ng.nextReg()
+		cg.write.Load(nextArrayPtr, elementType, elementType.Ptr(), elemPtr)
+
+		// update for next iteration
+		currentPtr = nextArrayPtr
+		currentType = elementType.Elem
+
+	}
+	return nil, fmt.Errorf(
+		"internal compiler error in compileArrIndexExp: no index expressions "+
+			"in array access at %d:%d near %s", e.Line(), e.Col(), e.Type(),
+	)
 }
 
 func (cg *CodeGenerator) compileArrPreExp(
