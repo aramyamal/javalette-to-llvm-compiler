@@ -35,7 +35,10 @@ func main() {
 	lexer := parser.NewJavaletteLexer(stream)
 	tokens := antlr.NewCommonTokenStream(lexer, 0)
 	parser := parser.NewJavaletteParser(tokens)
+	parser.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 	tree := parser.Prgm()
+
+	fmt.Println(tree.ToStringTree(parser.RuleNames, parser))
 
 	typechk := typechk.NewTypeChecker()
 	_, err = typechk.Typecheck(tree)
