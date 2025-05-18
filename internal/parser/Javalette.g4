@@ -6,14 +6,20 @@ prgm
     : def* 
     ;
 
-// definitions have type, identifier, arguments and statements
+// defintions can be function defs, struct defs and typedef defs
 def 
     : type Ident '(' (arg (',' arg)*)? ')' '{' stm* '}' # FuncDef
+    | 'struct' Ident '{' structField* '}' ';'           # StructDef
+    | 'typedef' 'struct' Ident '*' Ident ';'            # TypedefDef
     ;
 
 // an argument is a type and identifier
 arg
     : type Ident                                # ParamArg
+    ;
+
+structField
+    : type Ident ';'
     ;
 
 // statements can be the following
@@ -37,14 +43,17 @@ item
 // expressions can be the following
 exp
     : '(' exp ')'                                # ParenExp
+    | '(' type ')' 'null'                        # NullPtrExp
     | boolLit                                    # BoolExp
     | Integer                                    # IntExp
     | Double                                     # DoubleExp
     | 'new' baseType arrayIndex+                 # NewArrExp
+    | 'new' Ident                                # NewStructExp
     | Ident                                      # IdentExp
     | Ident '(' (exp (',' exp)*)? ')'            # FuncExp
     | exp arrayIndex+                            # ArrIndexExp
     | exp '.' Ident                              # FieldExp
+    | exp '->' Ident                             # DerefExp
     | String                                     # StringExp
     | '-' exp                                    # NegExp
     | '!' exp                                    # NotExp
@@ -59,6 +68,7 @@ exp
     | exp '||' exp                               # OrExp
     | <assoc=right> Ident '=' exp                # AssignExp
     | <assoc=right> exp arrayIndex+ '=' exp      # ArrAssignExp
+    | <assoc=right> exp '->' Ident '=' exp       # PtrFieldAssExp
     ;
 
 arrayIndex
@@ -79,7 +89,8 @@ baseType
     ;
 
 type
-    : baseType arraySuffix*
+    : baseType arraySuffix*             #PrimitiveType
+    | Ident arraySuffix*                #CustomType
     ;
 
 arraySuffix

@@ -36,16 +36,21 @@ func toTastBaseType(fromType parser.IBaseTypeContext) (tast.Type, error) {
 }
 
 func toTastType(fromType parser.ITypeContext) (tast.Type, error) {
-	baseType := fromType.BaseType()
-	t, err := toTastBaseType(baseType)
-	if err != nil {
-		return nil, err
+	switch t := fromType.(type) {
+	case *parser.PrimitiveTypeContext:
+		baseType := t.BaseType()
+		typ, err := toTastBaseType(baseType)
+		if err != nil {
+			return nil, err
+		}
+		arraySuffixes := t.AllArraySuffix()
+		for range arraySuffixes {
+			typ = tast.Array(typ)
+		}
+		return typ, nil
+	default:
+		return nil, fmt.Errorf("unhandled type '%T'", fromType)
 	}
-	arraySuffixes := fromType.AllArraySuffix()
-	for range arraySuffixes {
-		t = tast.Array(t)
-	}
-	return t, nil
 }
 
 // Checks if actual type can be converted to expected type. Returns true if the
