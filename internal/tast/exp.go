@@ -40,6 +40,34 @@ func NewParenExp(
 // check that ParenExp implements Exp
 var _ Exp = (*ParenExp)(nil)
 
+// NullPtrExp represents a null pointer expression node in the TAST.
+type NullPtrExp struct {
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*NullPtrExp) expNode()             {}
+func (e NullPtrExp) HasSideEffect() bool { return false }
+func (e NullPtrExp) IsLValue() bool      { return false }
+
+// NewNullPtrExp creates a new NullPtrExp node with the given type and source
+// location.
+func NewNullPtrExp(
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *ParenExp {
+	return &ParenExp{
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that NullPtrExp implements Exp
+var _ Exp = (*NullPtrExp)(nil)
+
 // IntToDoubleExp represents an integer-to-double conversion expression node in
 // the TAST.
 type IntToDoubleExp struct {
@@ -192,6 +220,38 @@ func NewNewArrExp(
 // check that NewArrExp implements Exp
 var _ Exp = (*NewArrExp)(nil)
 
+// NewStructExp represents struct allocation expression in the TAST.
+type NewStructExp struct {
+	Id string // Struct type name
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*NewStructExp) expNode()           {}
+func (NewStructExp) HasSideEffect() bool { return true }
+func (NewStructExp) IsLValue() bool      { return false }
+
+// NewNewStructExp creates a new NewStructExp node in the TAST with given
+// struct type name, type, and source location.
+func NewNewStructExp(
+	id string,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *NewStructExp {
+	return &NewStructExp{
+		Id: id,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that NewStructExp implements Exp
+var _ Exp = (*NewStructExp)(nil)
+
 // IdentExp represents an identifier expression node in the TAST.
 type IdentExp struct {
 	Id string // Identifier name
@@ -327,6 +387,41 @@ func NewFieldExp(
 
 // check that FieldExp implements Exp
 var _ Exp = (*FieldExp)(nil)
+
+// DerefExp represents a field pointer dereference expression in the TAST.
+type DerefExp struct {
+	Exp  Exp    // Expression whose field to dereference
+	Name string // Name of the field to dereference
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*DerefExp) expNode()           {}
+func (DerefExp) HasSideEffect() bool { return false }
+func (DerefExp) IsLValue() bool      { return true }
+
+// NewDerefExp creates a new DerefExp node with the given expression
+// whose field to dereference, the name of the field, type, and source location.
+func NewDerefExp(
+	exp Exp,
+	name string,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *DerefExp {
+	return &DerefExp{
+		Exp:  exp,
+		Name: name,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that DerefExp implements Exp
+var _ Exp = (*DerefExp)(nil)
 
 // StringExp represents a string literal expression node in the TAST.
 type StringExp struct {
