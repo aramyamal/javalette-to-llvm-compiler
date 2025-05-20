@@ -41,3 +41,55 @@ func NewFuncDef(
 
 // check that FuncDef implements Def
 var _ Def = (*FuncDef)(nil)
+
+// StructDef represents a struct definition in the TAST.
+type StructDef struct {
+	BaseTypedNode // Embed type and source location information
+}
+
+func (*StructDef) defNode() {}
+
+// NewStructDef creates a new StructDef node with the given
+// struct type and source location information.
+func NewStructDef(
+	structType *StructType,
+	line,
+	col int,
+	text string,
+) *StructDef {
+	return &StructDef{
+		BaseTypedNode: BaseTypedNode{
+			typ:      structType,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that StructDef implements Def
+var _ Def = (*StructDef)(nil)
+
+// TypedefDef represents a typedef definition in the TAST.
+type TypedefDef struct {
+	BaseTypedNode // Embed type and source location information
+}
+
+func (*TypedefDef) defNode() {}
+
+// NewTypedefDef creates a new typedef node with the given
+// typedef type and source location information.
+func NewTypedefDef(
+	typedefType *TypedefType,
+	line,
+	col int,
+	text string,
+) *TypedefDef {
+	return &TypedefDef{
+		BaseTypedNode: BaseTypedNode{
+			typ:      typedefType,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that TypeDef implements Def
+var _ Def = (*TypedefDef)(nil)
