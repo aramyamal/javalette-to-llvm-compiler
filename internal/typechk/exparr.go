@@ -89,3 +89,34 @@ func (tc *TypeChecker) inferArrayIndexing(
 	}
 	return currentType, idxExps, nil
 }
+
+func (tc *TypeChecker) inferFieldExp(
+	e *parser.FieldExpContext, line, col int, text string,
+) (*tast.FieldExp, error) {
+	exp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	fieldName := e.Ident().GetText()
+
+	fieldProviderType, ok := exp.Type().(tast.FieldProvider)
+	if !ok {
+		return nil, fmt.Errorf(
+			"type %s does not have any accessible fields at %d:%d near %s",
+			exp.Type(), line, col, text,
+		)
+	}
+
+	fieldInfo, ok := fieldProviderType.FieldInfo(fieldName)
+	if !ok {
+		return nil, fmt.Errorf(
+			"type %s does not have field %s at %d:%d near %s",
+			exp.Type().String(), fieldName, line, col, text,
+		)
+	}
+
+	return tast.NewFieldExp(
+		exp, fieldName, fieldInfo.Type,
+		line, col, text,
+	), nil
+}
