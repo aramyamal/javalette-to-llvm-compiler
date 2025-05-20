@@ -40,26 +40,26 @@ func (cg *CodeGenerator) compileNewArrExp(
 
 func (cg *CodeGenerator) compileArrIndexExp(
 	e *tast.ArrIndexExp,
-) (llvmgen.Value, error) {
+) (llvmgen.Reg, error) {
 
 	arrPtr, err := cg.compileExp(e.Exp)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	arrType := toLlvmType(e.Exp.Type())
 
 	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return "", fmt.Errorf(
 			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
 				" %s", err, e.Line(), e.Col(), e.Text(),
 		)
 	}
-	// if the element is an array/struct, load the pointer instead
+	// if the element is an array/struct elemptr is a pointer to a pointer to
+	// the array struct
 	if structType, ok := elemType.(*llvmgen.StructType); ok {
-		// elemPtr is a pointer to a pointer to the struct
-		arrPtr := cg.ng.nextReg()
 		// arrPtr is pointer to actual struct
+		arrPtr := cg.ng.nextReg()
 		cg.write.Load(arrPtr, structType.Ptr(), structType.Ptr().Ptr(), elemPtr)
 		return arrPtr, nil
 	}
@@ -70,126 +70,24 @@ func (cg *CodeGenerator) compileArrIndexExp(
 	return elemValue, nil
 }
 
-func (cg *CodeGenerator) compileArrPostExp(
-	e *tast.ArrPostExp,
-) (llvmgen.Value, error) {
+func (cg *CodeGenerator) compileArrIndexLExp(
+	e *tast.ArrIndexExp,
+) (llvmgen.Reg, error) {
 
 	arrPtr, err := cg.compileExp(e.Exp)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	arrType := toLlvmType(e.Exp.Type())
 
-	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
+	elemPtr, _, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
-				" %s", err, e.Line(), e.Col(), e.Type(),
+		return "", fmt.Errorf(
+			"internal compiler error in compileArrIndexLExp: %w at %d:%d near"+
+				" %s", err, e.Line(), e.Col(), e.Text(),
 		)
 	}
-
-	elemValue := cg.ng.nextReg()
-	cg.write.Load(
-		elemValue, elemType, elemType.Ptr(), elemPtr,
-	)
-
-	// increment/decrement the value
-	newValue := cg.ng.nextReg()
-	if e.Op == tast.OpInc {
-		cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-	} else if e.Op == tast.OpDec {
-		cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-	} else {
-		return nil, fmt.Errorf(
-			"internal compiler error compileArrPostExp: can not handle"+
-				"operation %s at %d:%d near %s", e.Op.Name(),
-			e.Line(), e.Col(), e.Text(),
-		)
-	}
-
-	// store the incremented/decremented value in the element pointer
-	cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
-
-	return elemValue, nil
-}
-
-func (cg *CodeGenerator) compileArrPreExp(
-	e *tast.ArrPreExp,
-) (llvmgen.Value, error) {
-
-	arrPtr, err := cg.compileExp(e.Exp)
-	if err != nil {
-		return nil, err
-	}
-	arrType := toLlvmType(e.Exp.Type())
-
-	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"internal compiler error in compileArrIndexExp: %w at %d:%d near"+
-				" %s", err, e.Line(), e.Col(), e.Type(),
-		)
-	}
-
-	elemValue := cg.ng.nextReg()
-	cg.write.Load(
-		elemValue, elemType, elemType.Ptr(), elemPtr,
-	)
-
-	// increment/decrement the value
-	newValue := cg.ng.nextReg()
-	if e.Op == tast.OpInc {
-		cg.write.Add(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-	} else if e.Op == tast.OpDec {
-		cg.write.Sub(newValue, llvmgen.I32, elemValue, llvmgen.LitInt(1))
-
-	} else {
-		return nil, fmt.Errorf(
-			"internal compiler error compileArrPostExp: can not handle"+
-				"operation %s at %d:%d near %s", e.Op.Name(),
-			e.Line(), e.Col(), e.Text(),
-		)
-	}
-
-	// store the incremented/decremented value in the element pointer
-	cg.write.Store(llvmgen.I32, newValue, llvmgen.I32.Ptr(), elemPtr)
-
-	return newValue, nil
-}
-
-func (cg *CodeGenerator) compileArrAssignExp(
-	e *tast.ArrAssignExp,
-) (llvmgen.Value, error) {
-	assValue, err := cg.compileExp(e.AssExp)
-	if err != nil {
-		return nil, err
-	}
-
-	arrPtr, err := cg.compileExp(e.ArrExp)
-	if err != nil {
-		return nil, err
-	}
-	arrType := toLlvmType(e.ArrExp.Type())
-
-	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"internal compiler error in compileArrAssignExp: %w at %d:%d near"+
-				" %s", err, e.Line(), e.Col(), e.Type(),
-		)
-	}
-	// if the element is a struct/array, store the pointer
-	if _, isStruct := elemType.(*llvmgen.StructType); isStruct {
-		cg.write.Store(elemType.Ptr(), assValue, elemType.Ptr().Ptr(), elemPtr)
-	} else {
-		// else store the primitive value
-		assType := toLlvmType(e.AssExp.Type())
-		cg.write.Store(assType, assValue, assType.Ptr(), elemPtr)
-	}
-	return assValue, nil
+	return elemPtr, nil
 }
 
 func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {

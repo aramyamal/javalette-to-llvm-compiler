@@ -100,7 +100,9 @@ func (cg *CodeGenerator) compileForEachStm(s *tast.ForEachStm) error {
 
 	variableValue := cg.ng.nextReg()
 	if _, isStruct := elemType.(*llvmgen.StructType); isStruct {
-		// for arrays and structs, load a pointer to them
+		// for arrays/structs, elemPtr is a pointer to a pointer to the struct,
+		// so load the pointer from elemPtr
+		cg.write.Load(variableValue, ptrType, ptrType.Ptr(), elemPtr)
 		cg.write.Store(ptrType, variableValue, ptrType.Ptr(), variablePtr)
 	} else {
 		// for primitive types, load the value

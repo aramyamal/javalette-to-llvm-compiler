@@ -26,45 +26,89 @@ func (cg *CodeGenerator) compileStringExp(e *tast.StringExp) (
 func (cg *CodeGenerator) compileIdentExp(e *tast.IdentExp) (
 	llvmgen.Value, error,
 ) {
+	ptrReg, err := cg.compileIdentLExp(e)
+	if err != nil {
+		return nil, err
+	}
+	typ := toLlvmType(e.Type())
+
+	if _, isStruct := typ.(*llvmgen.StructType); isStruct {
+		// for arrays and structs, load a pointer to them
+		des := cg.ng.nextReg()
+		ptrType := typ.Ptr()
+		cg.write.Load(des, ptrType, ptrType.Ptr(), ptrReg)
+		return des, nil
+	}
+
+	// load the value in the pointer
 	des := cg.ng.nextReg()
+	cg.write.Load(des, typ, typ.Ptr(), ptrReg)
+	return des, nil
+}
+
+func (cg *CodeGenerator) compileIdentLExp(e *tast.IdentExp) (
+	llvmgen.Reg, error,
+) {
 	reg, ok := cg.env.LookupVar(e.Id)
 	if !ok {
-		return nil, fmt.Errorf(
+		return "", fmt.Errorf(
 			"internal compiler error: undefined variable '%s' encountered"+
 				"during code generation at %d:%d near '%s'. "+
 				"This should have been caught during type checking.",
 			e.Id, e.Line(), e.Col(), e.Text(),
 		)
 	}
-	typ := toLlvmType(e.Type())
-
-	if _, isStruct := typ.(*llvmgen.StructType); isStruct {
-		// for arrays and structs, load a pointer to them
-		ptrType := typ.Ptr()
-		cg.write.Load(des, ptrType, ptrType.Ptr(), reg)
-		return des, nil
-	} else {
-		// for primitive types, load the value
-		cg.write.Load(des, typ, typ.Ptr(), reg)
-		return des, nil
-	}
+	return reg, nil
 }
 
 func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (
 	llvmgen.Value, error,
 ) {
+	args, err := cg.emitFuncArgs(e.Exps)
+	if err != nil {
+		return nil, err
+	}
+
+	des := cg.ng.nextReg()
+	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
+	return des, nil
+}
+
+func (cg *CodeGenerator) compileFuncLExp(e *tast.FuncExp) (
+	llvmgen.Reg, error,
+) {
+	typ := toLlvmType(e.Type())
+	if _, isFieldProvider := typ.(tast.FieldProvider); !isFieldProvider {
+		return "", fmt.Errorf(
+			"internal compiler error in compileFuncLExp: return type %s"+
+				"is not assignable at %d:%d near '%s'. "+
+				"This should have been caught during type checking.",
+			typ.String(), e.Line(), e.Col(), e.Text(),
+		)
+	}
+
+	args, err := cg.emitFuncArgs(e.Exps)
+	if err != nil {
+		return "", err
+	}
+
+	des := cg.ng.nextReg()
+	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
+	return des, nil
+}
+
+func (cg *CodeGenerator) emitFuncArgs(exps []tast.Exp) (
+	[]llvmgen.FuncArg, error,
+) {
 	var args []llvmgen.FuncArg
-	for _, exp := range e.Exps {
+	for _, exp := range exps {
 		value, err := cg.compileExp(exp)
 		if err != nil {
 			return nil, err
 		}
 		args = append(args, llvmgen.Arg(toLlvmRetType(exp.Type()), value))
 	}
-
-	des := cg.ng.nextReg()
-	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
-	return des, nil
+	return args, nil
 }
 
 func (cg *CodeGenerator) compileNegExp(e *tast.NegExp) (llvmgen.Value, error) {
@@ -103,18 +147,13 @@ func (cg *CodeGenerator) compileNotExp(e *tast.NotExp) (llvmgen.Value, error) {
 func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (
 	llvmgen.Value, error,
 ) {
-	ptrName, ok := cg.env.LookupVar(e.Id)
-	if !ok {
-		return nil, fmt.Errorf(
-			"internal compiler error: undefined variable '%s' encountered"+
-				"during code generation at %d:%d near '%s'. "+
-				"This should have been caught during type checking.",
-			e.Id, e.Line(), e.Col(), e.Text(),
-		)
+	ptrReg, err := cg.compileLExp(e.Exp)
+	if err != nil {
+		return nil, err
 	}
 	orig := cg.ng.nextReg()
 	typ := toLlvmType(e.Type())
-	cg.write.Load(orig, typ, typ.Ptr(), ptrName)
+	cg.write.Load(orig, typ, typ.Ptr(), ptrReg)
 	incrm := cg.ng.nextReg()
 
 	switch e.Op {
@@ -124,28 +163,23 @@ func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (
 		cg.write.Sub(incrm, typ, orig, llvmgen.LitInt(1))
 	default:
 		return nil, fmt.Errorf(
-			"compileExp->PostExp: unhandled op type '%v' at %d:%d near '%s'",
+			"compilePostExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 
 	}
-	cg.write.Store(typ, incrm, typ.Ptr(), ptrName)
+	cg.write.Store(typ, incrm, typ.Ptr(), ptrReg)
 	return orig, nil
 }
 
 func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvmgen.Value, error) {
-	ptrName, ok := cg.env.LookupVar(e.Id)
-	if !ok {
-		return nil, fmt.Errorf(
-			"internal compiler error: undefined variable '%s' encountered"+
-				"during code generation at %d:%d near '%s'. "+
-				"This should have been caught during type checking.",
-			e.Id, e.Line(), e.Col(), e.Text(),
-		)
+	ptrReg, err := cg.compileLExp(e.Exp)
+	if err != nil {
+		return nil, err
 	}
 	orig := cg.ng.nextReg()
 	typ := toLlvmType(e.Type())
-	cg.write.Load(orig, typ, typ.Ptr(), ptrName)
+	cg.write.Load(orig, typ, typ.Ptr(), ptrReg)
 	incrm := cg.ng.nextReg()
 
 	switch e.Op {
@@ -160,7 +194,7 @@ func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvmgen.Value, error) {
 		)
 
 	}
-	cg.write.Store(typ, incrm, typ.Ptr(), ptrName)
+	cg.write.Store(typ, incrm, typ.Ptr(), ptrReg)
 	return incrm, nil
 }
 
@@ -312,20 +346,15 @@ func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvmgen.Value, error) {
 func (cg *CodeGenerator) compileAssignExp(
 	e *tast.AssignExp,
 ) (llvmgen.Value, error) {
-	ptr, ok := cg.env.LookupVar(e.Id)
-	if !ok {
-		return nil, fmt.Errorf(
-			"internal compiler error: undefined variable '%s' encountered"+
-				"during code generation at %d:%d near '%s'. "+
-				"This should have been caught during type checking.",
-			e.Id, e.Line(), e.Col(), e.Text(),
-		)
+	lhsPtr, err := cg.compileLExp(e.ExpLhs)
+	if err != nil {
+		return nil, err
 	}
 	value, err := cg.compileExp(e.Exp)
 	if err != nil {
 		return nil, err
 	}
 	typ := toLlvmRetType(e.Type())
-	cg.write.Store(typ, value, typ.Ptr(), ptr)
+	cg.write.Store(typ, value, typ.Ptr(), lhsPtr)
 	return value, nil
 }

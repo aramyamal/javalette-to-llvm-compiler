@@ -35,12 +35,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 		return cg.compileNotExp(e)
 	case *tast.PostExp:
 		return cg.compilePostExp(e)
-	case *tast.ArrPostExp:
-		return cg.compileArrPostExp(e)
 	case *tast.PreExp:
 		return cg.compilePreExp(e)
-	case *tast.ArrPreExp:
-		return cg.compileArrPreExp(e)
 	case *tast.MulExp:
 		return cg.compileMulExp(e)
 	case *tast.AddExp:
@@ -53,11 +49,29 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 		return cg.compileOrExp(e)
 	case *tast.AssignExp:
 		return cg.compileAssignExp(e)
-	case *tast.ArrAssignExp:
-		return cg.compileArrAssignExp(e)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp: unhandled exp type %T at %d:%d near '%s'",
+			e, e.Line(), e.Col(), e.Text(),
+		)
+	}
+}
+
+func (cg *CodeGenerator) compileLExp(exp tast.Exp) (llvmgen.Reg, error) {
+	switch e := exp.(type) {
+	case *tast.ParenExp:
+		return cg.compileLExp(e.Exp)
+	case *tast.FuncExp:
+		return cg.compileFuncLExp(e)
+	case *tast.IdentExp:
+		return cg.compileIdentLExp(e)
+	case *tast.ArrIndexExp:
+		return cg.compileArrIndexLExp(e)
+	case *tast.FieldExp:
+		return cg.compileFieldLExp(e)
+	default:
+		return "", fmt.Errorf(
+			"compileLExp: expression is not assignable %T at %d:%d near '%s'",
 			e, e.Line(), e.Col(), e.Text(),
 		)
 	}

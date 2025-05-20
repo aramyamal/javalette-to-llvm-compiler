@@ -210,13 +210,18 @@ func (tc *TypeChecker) inferNotExp(
 func (tc *TypeChecker) inferPostExp(
 	e *parser.PostExpContext, line, col int, text string,
 ) (*tast.PostExp, error) {
-	varName := e.Ident().GetText()
-	typ, ok := tc.env.LookupVar(varName)
-	if !ok {
+	typedExp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	if !typedExp.IsLValue() {
 		return nil, fmt.Errorf(
-			"variable '%s' not found at %d:%d", varName, line, col,
+			"operand of '++' or '--' must be assignable at %d:%d near '%s'",
+			line, col, text,
 		)
 	}
+
+	typ := typedExp.Type()
 	if typ != tast.Int { //&& typ != tast.Double {
 		return nil, fmt.Errorf(
 			// "'++' or '--' operation can only be done on int or double at "+
@@ -228,22 +233,28 @@ func (tc *TypeChecker) inferPostExp(
 	if err != nil {
 		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
-	return tast.NewPostExp(varName, op, typ, line, col, text), nil
+	return tast.NewPostExp(typedExp, op, typ, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferPreExp(
 	e *parser.PreExpContext, line, col int, text string,
 ) (*tast.PreExp, error) {
-	varName := e.Ident().GetText()
-	typ, ok := tc.env.LookupVar(varName)
-	if !ok {
+	typedExp, err := tc.inferExp(e.Exp())
+	if err != nil {
+		return nil, err
+	}
+	if !typedExp.IsLValue() {
 		return nil, fmt.Errorf(
-			"variable '%s' not found at %d:%d", varName, line, col,
+			"operand of '++' or '--' must be assignable at %d:%d near '%s'",
+			line, col, text,
 		)
 	}
-	if typ != tast.Int && typ != tast.Double {
+
+	typ := typedExp.Type()
+	if typ != tast.Int { //&& typ != tast.Double {
 		return nil, fmt.Errorf(
-			"'++' or '--' operation can only be done on int or double at "+
+			// "'++' or '--' operation can only be done on int or double at "+
+			"'++' or '--' operation can only be done on int at "+
 				"%d:%d near '%s'", line, col, text,
 		)
 	}
@@ -251,7 +262,7 @@ func (tc *TypeChecker) inferPreExp(
 	if err != nil {
 		return nil, fmt.Errorf("%w at %d:%d near %s", err, line, col, text)
 	}
-	return tast.NewPreExp(varName, op, typ, line, col, text), nil
+	return tast.NewPreExp(typedExp, op, typ, line, col, text), nil
 }
 
 func (tc *TypeChecker) inferMulExp(
@@ -502,32 +513,37 @@ func (tc *TypeChecker) inferOrExp(
 func (tc *TypeChecker) inferAssignExp(
 	e *parser.AssignExpContext, line, col int, text string,
 ) (*tast.AssignExp, error) {
-	varName := e.Ident().GetText()
-	varType, ok := tc.env.LookupVar(varName)
-	if !ok {
-		return nil, fmt.Errorf(
-			"trying to assign to undeclared variable '%s' at %d:%d",
-			varName, line, col,
-		)
-	}
-
-	expValue, err := tc.inferExp(e.Exp())
+	expLhs, err := tc.inferExp(e.Exp(0))
 	if err != nil {
 		return nil, err
 	}
 
-	if !isConvertible(varType, expValue.Type()) {
+	if !expLhs.IsLValue() {
+		return nil, fmt.Errorf(
+			"left side of assignment is not an l-value at %d:%d near '%s'",
+			line, col, text,
+		)
+	}
+
+	expValue, err := tc.inferExp(e.Exp(1))
+	if err != nil {
+		return nil, err
+	}
+
+	lhsType := expLhs.Type()
+	rhsType := expValue.Type()
+	if !isConvertible(lhsType, rhsType) {
 		return nil, fmt.Errorf(
 			"illegal implicit conversion in assignment. Expected %s, "+
 				"but got %s at %d:%d near '%s'",
-			varType, expValue.Type(), line, col, text,
+			lhsType, rhsType, line, col, text,
 		)
 	}
 
 	return tast.NewAssignExp(
-		varName,
-		promoteExp(expValue, varType),
-		varType,
+		expLhs,
+		promoteExp(expValue, lhsType),
+		lhsType,
 		line, col, text,
 	), nil
 }

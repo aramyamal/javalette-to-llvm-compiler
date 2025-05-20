@@ -4,6 +4,7 @@ package tast
 type Exp interface {
 	TypedNode
 	HasSideEffect() bool
+	IsLValue() bool
 	expNode()
 }
 
@@ -16,6 +17,7 @@ type ParenExp struct {
 
 func (*ParenExp) expNode()             {}
 func (e ParenExp) HasSideEffect() bool { return e.Exp.HasSideEffect() }
+func (e ParenExp) IsLValue() bool      { return e.Exp.IsLValue() }
 
 // NewParenExp creates a new ParenExp node with the given inner expression,
 // type, and source location.
@@ -48,6 +50,7 @@ type IntToDoubleExp struct {
 
 func (*IntToDoubleExp) expNode()           {}
 func (IntToDoubleExp) HasSideEffect() bool { return false }
+func (IntToDoubleExp) IsLValue() bool      { return false }
 
 // NewIntToDoubleExp creates a new IntToDoubleExp node with the given expression.
 func NewIntToDoubleExp(
@@ -77,6 +80,7 @@ func (*BoolExp) expNode() {}
 // Type returns the type of the expression (Bool).
 func (BoolExp) Type() Type          { return Bool }
 func (BoolExp) HasSideEffect() bool { return false }
+func (BoolExp) IsLValue() bool      { return false }
 
 // NewBoolExp creates a new BoolExp node with the given boolean and source
 // location.
@@ -107,6 +111,7 @@ func (*IntExp) expNode() {}
 // Type returns the type of the expression (Int).
 func (IntExp) Type() Type          { return Int }
 func (IntExp) HasSideEffect() bool { return false }
+func (IntExp) IsLValue() bool      { return false }
 
 // NewIntExp creates a new IntExp node with the given integer and source
 // location.
@@ -137,6 +142,7 @@ func (*DoubleExp) expNode() {}
 // Type returns the type of the expression (Double).
 func (DoubleExp) Type() Type          { return Double }
 func (DoubleExp) HasSideEffect() bool { return false }
+func (DoubleExp) IsLValue() bool      { return false }
 
 // NewDoubleExp creates a new DoubleExp node with the given value and source location.
 func NewDoubleExp(
@@ -163,6 +169,7 @@ type NewArrExp struct {
 
 func (*NewArrExp) expNode()           {}
 func (NewArrExp) HasSideEffect() bool { return true }
+func (NewArrExp) IsLValue() bool      { return false }
 
 // NewNewArrExp creates a new NewArrExp node in the TAST with dimension
 // expressions, type, and source location.
@@ -185,40 +192,6 @@ func NewNewArrExp(
 // check that NewArrExp implements Exp
 var _ Exp = (*NewArrExp)(nil)
 
-// FieldExp represents a field access expression in the TAST.
-type FieldExp struct {
-	Exp  Exp    // Expression whose field to access
-	Name string // Name of the field to access
-
-	BaseTypedNode // Embeds type and source location information
-}
-
-func (*FieldExp) expNode()           {}
-func (FieldExp) HasSideEffect() bool { return false }
-
-// NewFieldExp creates a new FieldExp node with the given expression
-// whose field to access, the name of the field, type, and source location.
-func NewFieldExp(
-	exp Exp,
-	name string,
-	typ Type,
-	line int,
-	col int,
-	text string,
-) *FieldExp {
-	return &FieldExp{
-		Exp:  exp,
-		Name: name,
-		BaseTypedNode: BaseTypedNode{
-			typ:      typ,
-			BaseNode: BaseNode{line: line, col: col, text: text},
-		},
-	}
-}
-
-// check that FieldExp implements Exp
-var _ Exp = (*FieldExp)(nil)
-
 // IdentExp represents an identifier expression node in the TAST.
 type IdentExp struct {
 	Id string // Identifier name
@@ -228,6 +201,7 @@ type IdentExp struct {
 
 func (*IdentExp) expNode()           {}
 func (IdentExp) HasSideEffect() bool { return false }
+func (IdentExp) IsLValue() bool      { return true }
 
 // NewIdentExp creates a new IdentExp node with the given identifier, type, and source location.
 func NewIdentExp(
@@ -259,6 +233,7 @@ type FuncExp struct {
 
 func (*FuncExp) expNode()           {}
 func (FuncExp) HasSideEffect() bool { return true }
+func (FuncExp) IsLValue() bool      { return false }
 
 // NewFuncExp creates a new FuncExp node with the given function name,
 // arguments, type, and source location.
@@ -293,6 +268,7 @@ type ArrIndexExp struct {
 
 func (*ArrIndexExp) expNode()           {}
 func (ArrIndexExp) HasSideEffect() bool { return false }
+func (ArrIndexExp) IsLValue() bool      { return true }
 
 // NewArrIndexExp creates a new ArrIndexExp node with the given array expression,
 // index expressions, result type, and source location.
@@ -317,6 +293,41 @@ func NewArrIndexExp(
 // check that ArrIndexExp implements Exp
 var _ Exp = (*ArrIndexExp)(nil)
 
+// FieldExp represents a field access expression in the TAST.
+type FieldExp struct {
+	Exp  Exp    // Expression whose field to access
+	Name string // Name of the field to access
+
+	BaseTypedNode // Embeds type and source location information
+}
+
+func (*FieldExp) expNode()           {}
+func (FieldExp) HasSideEffect() bool { return false }
+func (FieldExp) IsLValue() bool      { return true }
+
+// NewFieldExp creates a new FieldExp node with the given expression
+// whose field to access, the name of the field, type, and source location.
+func NewFieldExp(
+	exp Exp,
+	name string,
+	typ Type,
+	line int,
+	col int,
+	text string,
+) *FieldExp {
+	return &FieldExp{
+		Exp:  exp,
+		Name: name,
+		BaseTypedNode: BaseTypedNode{
+			typ:      typ,
+			BaseNode: BaseNode{line: line, col: col, text: text},
+		},
+	}
+}
+
+// check that FieldExp implements Exp
+var _ Exp = (*FieldExp)(nil)
+
 // StringExp represents a string literal expression node in the TAST.
 type StringExp struct {
 	Value string // String value
@@ -327,6 +338,7 @@ type StringExp struct {
 func (*StringExp) expNode()           {}
 func (StringExp) Type() Type          { return String }
 func (StringExp) HasSideEffect() bool { return false }
+func (StringExp) IsLValue() bool      { return false }
 
 // NewStringExp creates a new StringExp node with the given value and source
 // location.
@@ -354,6 +366,7 @@ type NegExp struct {
 
 func (*NegExp) expNode()           {}
 func (NegExp) HasSideEffect() bool { return false }
+func (NegExp) IsLValue() bool      { return false }
 
 // NewNegExp creates a new NegExp node with the given expression, type, and
 // source location.
@@ -386,6 +399,7 @@ type NotExp struct {
 func (*NotExp) expNode()           {}
 func (*NotExp) Type() Type         { return Bool }
 func (NotExp) HasSideEffect() bool { return false }
+func (NotExp) IsLValue() bool      { return false }
 
 // NewNotExp creates a new NotExp node with the given expression and source
 // location.
@@ -407,19 +421,20 @@ var _ Exp = (*NotExp)(nil)
 // PostExp represents a post-increment or post-decrement expression node in the
 // TAST.
 type PostExp struct {
-	Id string // Identifier being incremented or decremented
-	Op Op     // Operation (OpInc or OpDec)
+	Exp Exp // Expression being incremented or decremented
+	Op  Op  // Operation (OpInc or OpDec)
 
 	BaseTypedNode // Embeds type and source location information
 }
 
 func (*PostExp) expNode()           {}
 func (PostExp) HasSideEffect() bool { return true }
+func (PostExp) IsLValue() bool      { return false }
 
 // NewPostExp creates a new PostExp node with the given identifier, operation,
 // type, and source location.
 func NewPostExp(
-	id string,
+	exp Exp,
 	op Op,
 	typ Type,
 	line int,
@@ -427,8 +442,8 @@ func NewPostExp(
 	text string,
 ) *PostExp {
 	return &PostExp{
-		Id: id,
-		Op: op,
+		Exp: exp,
+		Op:  op,
 		BaseTypedNode: BaseTypedNode{
 			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},
@@ -439,60 +454,23 @@ func NewPostExp(
 // check that PostExp implements Exp
 var _ Exp = (*PostExp)(nil)
 
-// ArrPostExp represents an expression of post-increment or post-decrement of
-// array access node in the TAST.
-type ArrPostExp struct {
-	Exp     Exp   // Array expression
-	IdxExps []Exp // Index expressions for each dimension
-	Op      Op    // Operation (OpInc or OpDec)
-
-	BaseTypedNode // Embeds type and source location information
-}
-
-func (*ArrPostExp) expNode()           {}
-func (ArrPostExp) HasSideEffect() bool { return true }
-
-// NewArrPostExp creates a new ArrPostExp node with the given array expression,
-// array access dimension expressions, operation, type, and source location.
-func NewArrPostExp(
-	exp Exp,
-	idxExps []Exp,
-	op Op,
-	typ Type,
-	line int,
-	col int,
-	text string,
-) *ArrPostExp {
-	return &ArrPostExp{
-		Exp:     exp,
-		IdxExps: idxExps,
-		Op:      op,
-		BaseTypedNode: BaseTypedNode{
-			typ:      typ,
-			BaseNode: BaseNode{line: line, col: col, text: text},
-		},
-	}
-}
-
-// check that ArrPostExp implements Exp
-var _ Exp = (*ArrPostExp)(nil)
-
 // PreExp represents a pre-increment or pre-decrement expression node in the
 // TAST.
 type PreExp struct {
-	Id string // Identifier being incremented or decremented
-	Op Op     // Operation (OpInc or OpDec)
+	Exp Exp // Expression being incremented or decremented
+	Op  Op  // Operation (OpInc or OpDec)
 
 	BaseTypedNode // Embeds type and source location information
 }
 
 func (*PreExp) expNode()           {}
 func (PreExp) HasSideEffect() bool { return true }
+func (PreExp) IsLValue() bool      { return false }
 
 // NewPreExp creates a new PreExp node with the given identifier, operation,
 // type, and source location.
 func NewPreExp(
-	id string,
+	exp Exp,
 	op Op,
 	typ Type,
 	line int,
@@ -500,8 +478,8 @@ func NewPreExp(
 	text string,
 ) *PreExp {
 	return &PreExp{
-		Id: id,
-		Op: op,
+		Exp: exp,
+		Op:  op,
 		BaseTypedNode: BaseTypedNode{
 			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},
@@ -511,44 +489,6 @@ func NewPreExp(
 
 // check that PreExp implements Exp
 var _ Exp = (*PreExp)(nil)
-
-// ArrPreExp represents an expression of pre-increment or pre-decrement of
-// array access node in the TAST.
-type ArrPreExp struct {
-	Exp     Exp   // Array expression
-	IdxExps []Exp // Index expressions for each dimension
-	Op      Op    // Operation (OpInc or OpDec)
-
-	BaseTypedNode // Embeds type and source location information
-}
-
-func (*ArrPreExp) expNode()           {}
-func (ArrPreExp) HasSideEffect() bool { return true }
-
-// NewArrPreExp creates a new ArrPreExp node with the given array expression,
-// array access dimension expressions, operation, type, and source location.
-func NewArrPreExp(
-	exp Exp,
-	idxExps []Exp,
-	op Op,
-	typ Type,
-	line int,
-	col int,
-	text string,
-) *ArrPreExp {
-	return &ArrPreExp{
-		Exp:     exp,
-		IdxExps: idxExps,
-		Op:      op,
-		BaseTypedNode: BaseTypedNode{
-			typ:      typ,
-			BaseNode: BaseNode{line: line, col: col, text: text},
-		},
-	}
-}
-
-// check that ArrPreExp implements Exp
-var _ Exp = (*ArrPreExp)(nil)
 
 // MulExp represents a multiplication, division, or modulo expression node in
 // the TAST.
@@ -562,6 +502,7 @@ type MulExp struct {
 
 func (*MulExp) expNode()           {}
 func (MulExp) HasSideEffect() bool { return false }
+func (MulExp) IsLValue() bool      { return false }
 
 // NewMulExp creates a new MulExp node with the given operands, operation, type,
 // and source location.
@@ -599,6 +540,7 @@ type AddExp struct {
 
 func (*AddExp) expNode()           {}
 func (AddExp) HasSideEffect() bool { return false }
+func (AddExp) IsLValue() bool      { return false }
 
 // NewAddExp creates a new AddExp node with the given operands, operation, type,
 // and source location.
@@ -637,6 +579,7 @@ type CmpExp struct {
 func (*CmpExp) expNode()           {}
 func (CmpExp) Type() Type          { return Bool }
 func (CmpExp) HasSideEffect() bool { return false }
+func (CmpExp) IsLValue() bool      { return false }
 
 // NewCmpExp creates a new CmpExp node with the given operands, operation, and
 // source location.
@@ -670,6 +613,7 @@ type AndExp struct {
 func (*AndExp) expNode()           {}
 func (AndExp) Type() Type          { return Bool }
 func (AndExp) HasSideEffect() bool { return false }
+func (AndExp) IsLValue() bool      { return false }
 
 // NewAndExp creates a new AndExp node with the given operands and source
 // location.
@@ -701,6 +645,7 @@ type OrExp struct {
 func (*OrExp) expNode()           {}
 func (OrExp) Type() Type          { return Bool }
 func (OrExp) HasSideEffect() bool { return false }
+func (OrExp) IsLValue() bool      { return false }
 
 // NewOrExp creates a new OrExp node with the given operands and source location.
 func NewOrExp(
@@ -722,19 +667,20 @@ var _ Exp = (*OrExp)(nil)
 
 // AssignExp represents an assignment expression node in the TAST.
 type AssignExp struct {
-	Id  string // Identifier being assigned to
-	Exp Exp    // Expression being assigned
+	ExpLhs Exp // Expression being assigned to
+	Exp    Exp // Expression being assigned
 
 	BaseTypedNode // Embeds type and source location information
 }
 
 func (*AssignExp) expNode()           {}
 func (AssignExp) HasSideEffect() bool { return true }
+func (AssignExp) IsLValue() bool      { return false }
 
 // NewAssignExp creates a new AssignExp node with the given identifier,
 // expression, type, and source location.
 func NewAssignExp(
-	id string,
+	expLhs Exp,
 	exp Exp,
 	typ Type,
 	line int,
@@ -742,8 +688,8 @@ func NewAssignExp(
 	text string,
 ) *AssignExp {
 	return &AssignExp{
-		Id:  id,
-		Exp: exp,
+		ExpLhs: expLhs,
+		Exp:    exp,
 		BaseTypedNode: BaseTypedNode{
 			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},
@@ -753,42 +699,3 @@ func NewAssignExp(
 
 // check that AssignExp implements Exp
 var _ Exp = (*AssignExp)(nil)
-
-// ArrAssignExp represents an array access assignment expression node in the
-// TAST.
-type ArrAssignExp struct {
-	ArrExp  Exp   // Array expression
-	IdxExps []Exp // Index expressions for each dimension
-	AssExp  Exp   // Expression to assign to accessed array element
-
-	BaseTypedNode // Embeds type and source location information
-}
-
-func (*ArrAssignExp) expNode()           {}
-func (ArrAssignExp) HasSideEffect() bool { return true }
-
-// NewArrAssignExp creates a new ArrAssignExp node with the given array
-// expression to assign, indexing dimension expression, expression to assign,
-// type, and source location.
-func NewArrAssignExp(
-	arrExp Exp,
-	idxExps []Exp,
-	assExp Exp,
-	typ Type,
-	line int,
-	col int,
-	text string,
-) *ArrAssignExp {
-	return &ArrAssignExp{
-		ArrExp:  arrExp,
-		IdxExps: idxExps,
-		AssExp:  assExp,
-		BaseTypedNode: BaseTypedNode{
-			typ:      typ,
-			BaseNode: BaseNode{line: line, col: col, text: text},
-		},
-	}
-}
-
-// check that ArrAssignExp implements Exp
-var _ Exp = (*ArrAssignExp)(nil)

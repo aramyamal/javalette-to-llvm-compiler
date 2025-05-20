@@ -57,18 +57,14 @@ exp
     | String                                     # StringExp
     | '-' exp                                    # NegExp
     | '!' exp                                    # NotExp
-    | Ident incDecOp                             # PostExp
-    | exp arrayIndex+ incDecOp                   # ArrPostExp
-    | incDecOp Ident                             # PreExp
-    | incDecOp exp arrayIndex+                   # ArrPreExp
+    | exp incDecOp                               # PostExp
+    | incDecOp exp                               # PreExp
     | exp mulOp exp                              # MulExp
     | exp addOp exp                              # AddExp
     | exp cmpOp exp                              # CmpExp
     | exp '&&' exp                               # AndExp
     | exp '||' exp                               # OrExp
-    | <assoc=right> Ident '=' exp                # AssignExp
-    | <assoc=right> exp arrayIndex+ '=' exp      # ArrAssignExp
-    | <assoc=right> exp '->' Ident '=' exp       # PtrFieldAssExp
+    | <assoc=right> exp '=' exp                  # AssignExp
     ;
 
 arrayIndex

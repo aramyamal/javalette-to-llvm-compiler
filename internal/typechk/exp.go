@@ -36,12 +36,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferNotExp(e, line, col, text)
 	case *parser.PostExpContext:
 		return tc.inferPostExp(e, line, col, text)
-	case *parser.ArrPostExpContext:
-		return tc.inferArrPostExp(e, line, col, text)
 	case *parser.PreExpContext:
 		return tc.inferPreExp(e, line, col, text)
-	case *parser.ArrPreExpContext:
-		return tc.inferArrPreExp(e, line, col, text)
 	case *parser.MulExpContext:
 		return tc.inferMulExp(e, line, col, text)
 	case *parser.AddExpContext:
@@ -54,8 +50,6 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferOrExp(e, line, col, text)
 	case *parser.AssignExpContext:
 		return tc.inferAssignExp(e, line, col, text)
-	case *parser.ArrAssignExpContext:
-		return tc.inferArrAssignExp(e, line, col, text)
 	default:
 		return nil, fmt.Errorf(
 			"inferExp: unhandled exp type %T at %d:%d near '%s'",
