@@ -28,6 +28,10 @@ func (tc *TypeChecker) checkDef(def parser.IDefContext) (tast.Def, error) {
 	switch d := def.(type) {
 	case *parser.FuncDefContext:
 		return tc.checkFuncDef(d, line, col, text)
+	case *parser.StructDefContext:
+		return tc.checkStructDef(d, line, col, text)
+	case *parser.TypedefDefContext:
+		return tc.checkTypedefDef(d, line, col, text)
 	default:
 		return nil, fmt.Errorf(
 			"checkDef: unhandled def type %T at %d:%d near '%s'",
@@ -39,7 +43,7 @@ func (tc *TypeChecker) checkDef(def parser.IDefContext) (tast.Def, error) {
 func (tc *TypeChecker) checkFuncDef(
 	d *parser.FuncDefContext, line, col int, text string,
 ) (*tast.FuncDef, error) {
-	_, params, err := extractParams(d.AllArg())
+	_, params, err := tc.extractParams(d.AllArg())
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +58,7 @@ func (tc *TypeChecker) checkFuncDef(
 		}
 	}
 
-	typ, err := toTastType(d.Type_())
+	typ, err := tc.toTastType(d.Type_())
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +96,7 @@ func (tc *TypeChecker) checkFuncDef(
 		typedStms = append(typedStms, voidReturn)
 	}
 
-	typedArgs, err := toAstArgs(d.AllArg())
+	typedArgs, err := tc.toTastArgs(d.AllArg())
 	if err != nil {
 		return nil, err
 	}
@@ -104,4 +108,39 @@ func (tc *TypeChecker) checkFuncDef(
 		typ,
 		line, col, text,
 	), nil
+}
+
+func (tc *TypeChecker) checkStructDef(
+	d *parser.StructDefContext, line, col int, text string,
+) (*tast.StructDef, error) {
+	structName := d.Ident().GetText()
+	envStruct, ok := tc.env.LookupStruct(structName)
+	if !ok {
+		return nil, fmt.Errorf(
+			"error typechecking struct %s at %d:%d near %s",
+			structName, line, col, text,
+		)
+	}
+	structType, ok := envStruct.(*tast.StructType)
+	if !ok {
+		return nil, fmt.Errorf(
+			"error typechecking struct, did not retrieve expected type %T, but"+
+				" got %T instead", structType, envStruct,
+		)
+	}
+	return tast.NewStructDef(structType, line, col, text), nil
+}
+
+func (tc *TypeChecker) checkTypedefDef(
+	d *parser.TypedefDefContext, line, col int, text string,
+) (*tast.TypedefDef, error) {
+	alias := d.Type_(1).GetText()
+	aliasedType, err := tc.toTastType(d.Type_(0))
+	if err != nil {
+		return nil, fmt.Errorf(
+			"cannot create typedef '%s' at %d:%d near %s: %w",
+			alias, line, col, text, err,
+		)
+	}
+	return tast.NewTypedefDef(alias, aliasedType, line, col, text), nil
 }

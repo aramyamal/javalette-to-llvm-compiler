@@ -17,6 +17,8 @@ type Environment[T any] struct {
 	contexts      []Context[T]
 	signatures    map[string]Signature[T]
 	currentReturn T
+	structs       map[string]T
+	typedefs      map[string]T
 }
 
 func (e *Environment[T]) LookupVar(varName string) (T, bool) {
@@ -132,6 +134,32 @@ func (e *Environment[T]) LookupFunc(funcName string) (Signature[T], bool) {
 	return zeroSignature, false
 }
 
+func (e *Environment[T]) ExtendStruct(name string, typ T) bool {
+	if _, exists := e.structs[name]; exists {
+		return false
+	}
+	e.structs[name] = typ
+	return true
+}
+
+func (e *Environment[T]) ExtendTypedef(name string, typ T) bool {
+	if _, exists := e.typedefs[name]; exists {
+		return false
+	}
+	e.typedefs[name] = typ
+	return true
+}
+
+func (e *Environment[T]) LookupStruct(name string) (T, bool) {
+	typ, exists := e.structs[name]
+	return typ, exists
+}
+
+func (e *Environment[T]) LookupTypedef(name string) (T, bool) {
+	typ, exists := e.typedefs[name]
+	return typ, exists
+}
+
 func (e *Environment[T]) Peek() (*Context[T], bool) {
 	if len(e.contexts) == 0 {
 		return nil, false
@@ -145,6 +173,8 @@ func NewEnvironment[T any]() *Environment[T] {
 		contexts:      make([]Context[T], 0),
 		signatures:    make(map[string]Signature[T]),
 		currentReturn: zeroValue,
+		structs:       make(map[string]T),
+		typedefs:      make(map[string]T),
 	}
 	return &environment
 }

@@ -39,7 +39,7 @@ func (tc *TypeChecker) Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 		return nil, fmt.Errorf("expected *parser.ProgramContext, got %T", tree)
 	}
 	defs := prgm.AllDef()
-	if err := validateMainFunc(defs); err != nil {
+	if err := tc.validateMainFunc(defs); err != nil {
 		return nil, err
 	}
 
@@ -51,7 +51,7 @@ func (tc *TypeChecker) Typecheck(tree parser.IPrgmContext) (*tast.Prgm, error) {
 
 	tc.env.EnterContext()
 
-	if err := validateFuncSigns(tc.env, defs); err != nil {
+	if err := tc.validateDefs(defs); err != nil {
 		return nil, err
 	}
 

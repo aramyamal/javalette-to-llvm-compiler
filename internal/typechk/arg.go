@@ -7,19 +7,19 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 )
 
-func extractParams(
+func (tc *TypeChecker) extractParams(
 	args []parser.IArgContext,
 ) ([]string, map[string]tast.Type, error) {
-	_, paramNames, params, err := extractArgs(args) // Ignore typedArgs slice
+	_, paramNames, params, err := tc.extractArgs(args) // Ignore typedArgs slice
 	return paramNames, params, err
 }
 
-func toAstArgs(args []parser.IArgContext) ([]tast.Arg, error) {
-	typedArgs, _, _, err := extractArgs(args)
+func (tc *TypeChecker) toTastArgs(args []parser.IArgContext) ([]tast.Arg, error) {
+	typedArgs, _, _, err := tc.extractArgs(args)
 	return typedArgs, err
 }
 
-func extractArgs(
+func (tc *TypeChecker) extractArgs(
 	args []parser.IArgContext,
 ) ([]tast.Arg, []string, map[string]tast.Type, error) {
 
@@ -33,7 +33,7 @@ func extractArgs(
 		switch a := arg.(type) {
 		case *parser.ParamArgContext:
 			paramName := a.Ident().GetText()
-			paramType, err := toTastType(a.Type_())
+			paramType, err := tc.toTastType(a.Type_())
 			if err != nil {
 				return nil, nil, nil, err
 			}

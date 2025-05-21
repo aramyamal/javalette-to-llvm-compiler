@@ -10,7 +10,7 @@ import (
 func (tc *TypeChecker) inferNewArrExp(
 	e *parser.NewArrExpContext, line, col int, text string,
 ) (*tast.NewArrExp, error) {
-	typ, err := toTastBaseType(e.BaseType())
+	typ, err := tc.toTastBaseType(e.BaseType())
 	if err != nil {
 		return nil, err
 	}

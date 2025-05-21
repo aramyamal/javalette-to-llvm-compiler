@@ -118,7 +118,7 @@ func (tc *TypeChecker) inferFuncExp(
 		if !isConvertible(expected, actual) {
 			return nil, fmt.Errorf(
 				"argument %d of function '%s' has incompatible type. "+
-					"Expected %s but got %s at %d:%d",
+					"Expected %s but got %s at %d:%d, ",
 				i+1, funcName, expected, actual, line, col,
 			)
 		}
@@ -284,7 +284,7 @@ func (tc *TypeChecker) inferMulExp(
 
 	typ, err := dominantType(leftType, rightType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%d:%d at %s: %w", line, col, text, err)
 	}
 
 	return tast.NewMulExp(
@@ -335,7 +335,7 @@ func (tc *TypeChecker) inferAddExp(
 
 	typ, err := dominantType(leftType, rightType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%d:%d at %s: %w", line, col, text, err)
 	}
 
 	return tast.NewAddExp(
@@ -427,7 +427,7 @@ func (tc *TypeChecker) inferCmpExp(
 	// Get dominant type for proper promotion
 	domType, err := dominantType(leftType, rightType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%d:%d at %s: %w", line, col, text, err)
 	}
 
 	return tast.NewCmpExp(

@@ -14,7 +14,7 @@ func (tc *TypeChecker) checkForEachStm(
 	tc.env.EnterContext()
 	defer tc.env.ExitContext()
 
-	typ, err := toTastType(s.Type_())
+	typ, err := tc.toTastType(s.Type_())
 	if err != nil {
 		return nil, err
 	}

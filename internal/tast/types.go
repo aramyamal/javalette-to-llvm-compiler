@@ -1,7 +1,5 @@
 package tast
 
-import "strings"
-
 // Type represents a Javalette type in the typed abstract syntax tree (TAST).
 type Type interface {
 	String() string
@@ -47,7 +45,7 @@ type ArrayType struct {
 }
 
 func (a *ArrayType) String() string {
-	return a.Elem.String() + "[]"
+	return typeSummary(a.Elem) + "[]"
 }
 func (b ArrayType) isTastType() {}
 
@@ -66,54 +64,67 @@ func Array(elem Type) *ArrayType {
 	return &ArrayType{Elem: elem}
 }
 
-// check that ArrayType implements FieldProvider
-var _ FieldProvider = (*ArrayType)(nil)
-
 type StructType struct {
-	Name       string
-	fields     map[string]*FieldInfo
-	fieldNames []string
+	Name string
 }
 
-type fieldCreator struct {
+// global mapping of struct fields to structs to prevent recursion problems
+var structFields = map[string][]*FieldCreator{}
+
+func RegisterStruct(name string, fields ...*FieldCreator) *StructType {
+	structFields[name] = fields
+	return &StructType{Name: name}
+}
+
+type FieldCreator struct {
 	Type Type
 	Name string
 }
 
-func Field(typ Type, name string) *fieldCreator {
-	return &fieldCreator{Type: typ, Name: name}
-}
-
-func Struct(name string, fields ...*fieldCreator) *StructType {
-	fieldsMap := make(map[string]*FieldInfo)
-	var fieldNames []string
-	for i, field := range fields {
-		fieldsMap[field.Name] = &FieldInfo{Type: field.Type, Idx: i}
-		fieldNames = append(fieldNames, field.Name)
-	}
-	return &StructType{Name: name, fields: fieldsMap, fieldNames: fieldNames}
+func Field(typ Type, name string) *FieldCreator {
+	return &FieldCreator{Type: typ, Name: name}
 }
 
 func (s *StructType) String() string {
-	result := "struct " + s.Name + " { "
-	var fields []string
-	for _, name := range s.fieldNames {
-		fields = append(fields, name+": "+s.fields[name].Type.String())
+	str := s.Name
+	if fields, ok := structFields[s.Name]; ok {
+		str += " { "
+		for i, field := range fields {
+			if i > 0 {
+				str += "; "
+			}
+			str += typeSummary(field.Type) + " " + field.Name
+		}
+		str += " }"
 	}
-	result += strings.Join(fields, "; ")
-	result += " }"
-	return result
+	return str
 }
 
 func (s *StructType) isTastType() {}
 
 func (s *StructType) FieldInfo(name string) (*FieldInfo, bool) {
-	fieldInfo, ok := s.fields[name]
-	return fieldInfo, ok
+	fields, ok := structFields[s.Name]
+	if !ok {
+		return nil, false
+	}
+	for i, f := range fields {
+		if f.Name == name {
+			return &FieldInfo{Type: f.Type, Idx: i}, true
+		}
+	}
+	return nil, false
 }
 
 func (s *StructType) Fields() []string {
-	return s.fieldNames
+	fields, ok := structFields[s.Name]
+	if !ok {
+		return nil
+	}
+	names := make([]string, len(fields))
+	for i, f := range fields {
+		names[i] = f.Name
+	}
+	return names
 }
 
 type TypedefType struct {
@@ -126,10 +137,46 @@ func Typedef(name string, aliased Type) *TypedefType {
 }
 
 func (t *TypedefType) String() string {
-	return t.Name
+	return "typedef:" + t.Name + "(" + typeSummary(t.Aliased) + ")"
 }
 
 func (t *TypedefType) isTastType() {}
+
+type PointerType struct {
+	Elem Type
+}
+
+func (p *PointerType) String() string {
+	return p.Elem.String() + "*"
+}
+func (p *PointerType) isTastType() {}
+
+func Pointer(elem Type) *PointerType {
+	return &PointerType{Elem: elem}
+}
+
+func typeSummary(typ Type) string {
+	switch t := typ.(type) {
+	case *StructType:
+		return "struct " + t.Name
+	case *PointerType:
+		// only print one level that is pointer to struct or base type
+		switch elem := t.Elem.(type) {
+		case *StructType:
+			return "struct " + elem.Name + "*"
+		default:
+			return typeSummary(elem) + "*"
+		}
+	case *ArrayType:
+		return typeSummary(t.Elem) + "[]"
+	case BaseType:
+		return t.String()
+	case *TypedefType:
+		return t.Name
+	default:
+		return "unknown"
+	}
+}
 
 // Op represents an operator in the TAST.
 type Op int
@@ -195,3 +242,4 @@ var _ FieldProvider = (*ArrayType)(nil)
 var _ Type = (*StructType)(nil)
 var _ FieldProvider = (*StructType)(nil)
 var _ Type = (*TypedefType)(nil)
+var _ Type = (*PointerType)(nil)

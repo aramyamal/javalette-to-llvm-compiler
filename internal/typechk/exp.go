@@ -12,6 +12,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 	switch e := exp.(type) {
 	case *parser.ParenExpContext:
 		return tc.inferParenExp(e, line, col, text)
+	case *parser.NullPtrExpContext:
+		return tc.inferNullPtrExp(e, line, col, text)
 	case *parser.BoolExpContext:
 		return tc.inferBoolExp(e, line, col, text)
 	case *parser.IntExpContext:
@@ -20,6 +22,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferDoubleExp(e, line, col, text)
 	case *parser.NewArrExpContext:
 		return tc.inferNewArrExp(e, line, col, text)
+	case *parser.NewStructExpContext:
+		return tc.inferNewStructExp(e, line, col, text)
 	case *parser.IdentExpContext:
 		return tc.inferIdentExp(e, line, col, text)
 	case *parser.FuncExpContext:
@@ -28,6 +32,8 @@ func (tc *TypeChecker) inferExp(exp parser.IExpContext) (tast.Exp, error) {
 		return tc.inferArrIndexExp(e, line, col, text)
 	case *parser.FieldExpContext:
 		return tc.inferFieldExp(e, line, col, text)
+	case *parser.DerefExpContext:
+		return tc.inferDerefExp(e, line, col, text)
 	case *parser.StringExpContext:
 		return tc.inferStringExp(e, line, col, text)
 	case *parser.NegExpContext:

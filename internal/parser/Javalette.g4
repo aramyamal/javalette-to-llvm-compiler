@@ -9,13 +9,17 @@ prgm
 // defintions can be function defs, struct defs and typedef defs
 def 
     : type Ident '(' (arg (',' arg)*)? ')' '{' stm* '}' # FuncDef
-    | 'struct' Ident '{' (arg ';')* '}' ';'             # StructDef
-    | 'typedef' 'struct' Ident '*' Ident ';'            # TypedefDef
+    | 'struct' Ident '{' structField* '}' ';'           # StructDef
+    | 'typedef' 'struct' type '*' type ';'              # TypedefDef
     ;
 
 // an argument is a type and identifier
 arg
     : type Ident                                # ParamArg
+    ;
+
+structField
+    : type Ident ';'
     ;
 
 // statements can be the following
@@ -72,17 +76,18 @@ intType: 'int';
 doubleType: 'double';
 stringType: 'string';
 voidType: 'void';
+customType: Ident;
 baseType
     : boolType
     | intType
     | doubleType
     | stringType
     | voidType
+    | customType
     ;
 
 type
     : baseType arraySuffix*             #PrimitiveType
-    | Ident arraySuffix*                #CustomType
     ;
 
 arraySuffix

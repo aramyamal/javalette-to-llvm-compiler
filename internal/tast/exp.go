@@ -56,8 +56,8 @@ func NewNullPtrExp(
 	line int,
 	col int,
 	text string,
-) *ParenExp {
-	return &ParenExp{
+) *NullPtrExp {
+	return &NullPtrExp{
 		BaseTypedNode: BaseTypedNode{
 			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},
@@ -222,8 +222,6 @@ var _ Exp = (*NewArrExp)(nil)
 
 // NewStructExp represents struct allocation expression in the TAST.
 type NewStructExp struct {
-	Id string // Struct type name
-
 	BaseTypedNode // Embeds type and source location information
 }
 
@@ -234,14 +232,12 @@ func (NewStructExp) IsLValue() bool      { return false }
 // NewNewStructExp creates a new NewStructExp node in the TAST with given
 // struct type name, type, and source location.
 func NewNewStructExp(
-	id string,
 	typ Type,
 	line int,
 	col int,
 	text string,
 ) *NewStructExp {
 	return &NewStructExp{
-		Id: id,
 		BaseTypedNode: BaseTypedNode{
 			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},

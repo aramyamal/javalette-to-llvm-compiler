@@ -27,7 +27,7 @@ func (tc *TypeChecker) checkExpStm(
 func (tc *TypeChecker) checkDeclsStm(
 	s *parser.DeclsStmContext, line, col int, text string,
 ) (*tast.DeclsStm, error) {
-	typ, err := toTastType(s.Type_())
+	typ, err := tc.toTastType(s.Type_())
 	if err != nil {
 		return nil, err
 	}

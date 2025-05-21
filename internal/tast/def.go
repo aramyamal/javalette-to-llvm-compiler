@@ -70,7 +70,8 @@ var _ Def = (*StructDef)(nil)
 
 // TypedefDef represents a typedef definition in the TAST.
 type TypedefDef struct {
-	BaseTypedNode // Embed type and source location information
+	Id            string // Typedef alias name.
+	BaseTypedNode        // Embed type and source location information
 }
 
 func (*TypedefDef) defNode() {}
@@ -78,14 +79,16 @@ func (*TypedefDef) defNode() {}
 // NewTypedefDef creates a new typedef node with the given
 // typedef type and source location information.
 func NewTypedefDef(
-	typedefType *TypedefType,
+	id string,
+	typ Type,
 	line,
 	col int,
 	text string,
 ) *TypedefDef {
 	return &TypedefDef{
+		Id: id,
 		BaseTypedNode: BaseTypedNode{
-			typ:      typedefType,
+			typ:      typ,
 			BaseNode: BaseNode{line: line, col: col, text: text},
 		},
 	}
