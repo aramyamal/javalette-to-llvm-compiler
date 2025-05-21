@@ -16,8 +16,7 @@ func (cg *CodeGenerator) compileStm(stm tast.Stm) error {
 	case *tast.ReturnStm:
 		return cg.compileReturnStm(s)
 	case *tast.VoidReturnStm:
-		cg.write.Ret(llvmgen.Void)
-		return nil
+		return cg.write.Ret(llvmgen.Void)
 	case *tast.ForEachStm:
 		return cg.compileForEachStm(s)
 	case *tast.WhileStm:

@@ -11,6 +11,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 	switch e := exp.(type) {
 	case *tast.ParenExp:
 		return cg.compileExp(e.Exp)
+	case *tast.NullPtrExp:
+		return llvmgen.Null(), nil
 	case *tast.BoolExp:
 		return llvmgen.LitBool(e.Value), nil
 	case *tast.IntExp:
@@ -19,6 +21,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 		return llvmgen.LitDouble(e.Value), nil
 	case *tast.NewArrExp:
 		return cg.compileNewArrExp(e)
+	case *tast.NewStructExp:
+		return cg.compileNewStructExp(e)
 	case *tast.IdentExp:
 		return cg.compileIdentExp(e)
 	case *tast.FuncExp:
@@ -27,6 +31,8 @@ func (cg *CodeGenerator) compileExp(exp tast.Exp) (llvmgen.Value, error) {
 		return cg.compileArrIndexExp(e)
 	case *tast.FieldExp:
 		return cg.compileFieldExp(e)
+	case *tast.DerefExp:
+		return cg.compileDerefExp(e)
 	case *tast.StringExp:
 		return cg.compileStringExp(e)
 	case *tast.NegExp:
@@ -69,6 +75,8 @@ func (cg *CodeGenerator) compileLExp(exp tast.Exp) (llvmgen.Reg, error) {
 		return cg.compileArrIndexLExp(e)
 	case *tast.FieldExp:
 		return cg.compileFieldLExp(e)
+	case *tast.DerefExp:
+		return cg.compileDerefLExp(e)
 	default:
 		return "", fmt.Errorf(
 			"compileLExp: expression is not assignable %T at %d:%d near '%s'",

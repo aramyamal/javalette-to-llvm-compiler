@@ -502,21 +502,34 @@ func (w *Writer) CmpGe(des Reg, typ Type, lhs, rhs Value) error {
 
 func (w *Writer) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
-	switch typ {
-	case I1:
+	switch t := typ.(type) {
+	case PrimitiveType:
+		switch t {
+		case I1:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = icmp eq i1 %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		case I32:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = icmp eq i32 %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		case Double:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = fcmp oeq double %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		default:
+			return fmt.Errorf(
+				"unsupported primitive type '%s' for LLVM instruction 'cmp eq'",
+				typ.String(),
+			)
+		}
+	case PtrType:
 		llvmInstr = fmt.Sprintf(
-			"\t%s = icmp eq i1 %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
-		)
-	case I32:
-		llvmInstr = fmt.Sprintf(
-			"\t%s = icmp eq i32 %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
-		)
-	case Double:
-		llvmInstr = fmt.Sprintf(
-			"\t%s = fcmp oeq double %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
+			"\t%s = icmp eq %s %s, %s\n",
+			des.String(), typ.String(), lhs.String(), rhs.String(),
 		)
 	default:
 		return fmt.Errorf(
@@ -530,21 +543,34 @@ func (w *Writer) CmpEq(des Reg, typ Type, lhs, rhs Value) error {
 
 func (w *Writer) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
 	var llvmInstr string
-	switch typ {
-	case I1:
+	switch t := typ.(type) {
+	case PrimitiveType:
+		switch t {
+		case I1:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = icmp ne i1 %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		case I32:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = icmp ne i32 %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		case Double:
+			llvmInstr = fmt.Sprintf(
+				"\t%s = fcmp one double %s, %s\n",
+				des.String(), lhs.String(), rhs.String(),
+			)
+		default:
+			return fmt.Errorf(
+				"unsupported primitive type '%s' for LLVM instruction 'cmp ne'",
+				typ.String(),
+			)
+		}
+	case PtrType:
 		llvmInstr = fmt.Sprintf(
-			"\t%s = icmp ne i1 %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
-		)
-	case I32:
-		llvmInstr = fmt.Sprintf(
-			"\t%s = icmp ne i32 %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
-		)
-	case Double:
-		llvmInstr = fmt.Sprintf(
-			"\t%s = fcmp one double %s, %s\n",
-			des.String(), lhs.String(), rhs.String(),
+			"\t%s = icmp ne %s %s, %s\n",
+			des.String(), typ.String(), lhs.String(), rhs.String(),
 		)
 	default:
 		return fmt.Errorf(
@@ -556,7 +582,7 @@ func (w *Writer) CmpNe(des Reg, typ Type, lhs, rhs Value) error {
 	return err
 }
 
-func (w *Writer) Type(structType StructType) error {
+func (w *Writer) Type(structType *StructType) error {
 	var fieldStrs []string
 	for _, f := range structType.Fields {
 		fieldStrs = append(fieldStrs, f.String())
@@ -570,7 +596,7 @@ func (w *Writer) Type(structType StructType) error {
 	return err
 }
 
-func (w Writer) TypeDef(structType StructType) error {
+func (w Writer) StructType(structType *StructType) error {
 	return w.Type(structType)
 }
 

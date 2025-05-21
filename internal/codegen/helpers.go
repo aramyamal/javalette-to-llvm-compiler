@@ -10,20 +10,51 @@ import (
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
-func toLlvmRetType(typ tast.Type) llvmgen.Type {
+func (cg *CodeGenerator) toLlvmRetType(typ tast.Type) llvmgen.Type {
 	if _, isFieldProvider := typ.(tast.FieldProvider); isFieldProvider {
-		return toLlvmType(typ).Ptr()
+		return cg.toLlvmType(typ).Ptr()
 	}
-	return toLlvmType(typ)
+	return cg.toLlvmType(typ)
 }
 
-func toLlvmType(typ tast.Type) llvmgen.Type {
+func (cg *CodeGenerator) toLlvmType(typ tast.Type) llvmgen.Type {
 
 	switch t := typ.(type) {
+	case *tast.StructType:
+		structType, exists := cg.structs[t.Name]
+		if exists {
+			return structType
+		}
+
+		// register empty struct to stop recursion
+		structType = llvmgen.StructDef(t.Name)
+		cg.structs[t.Name] = structType
+
+		fields := t.Fields()
+		fieldLlvmTypes := make([]llvmgen.Type, len(fields))
+		for i, fieldName := range fields {
+			fieldInfo, ok := t.FieldInfo(fieldName)
+			if !ok {
+				panic(fmt.Sprintf(
+					"unable to access struct field %s from %T",
+					fieldName, t,
+				))
+			}
+			fieldLlvmTypes[i] = cg.toLlvmType(fieldInfo.Type)
+		}
+		structType.Fields = fieldLlvmTypes
+		return structType
+
+	case *tast.TypedefType:
+		return cg.toLlvmType(UnwrapTypedef(t))
+
+	case *tast.PointerType:
+		return cg.toLlvmType(t.Elem).Ptr()
+
 	case *tast.ArrayType:
-		elemType := toLlvmType(t.Elem)
+		elemType := cg.toLlvmType(t.Elem)
 		name := arrayName(elemType)
-		return llvmgen.TypeDef(
+		return llvmgen.StructDef(
 			name,           // generated name
 			llvmgen.I32,    // length field
 			elemType.Ptr(), // pointer to data
@@ -66,4 +97,14 @@ func arrayName(elem llvmgen.Type) string {
 		}
 	}
 	return "arrayof_" + name + "_1D"
+}
+
+func UnwrapTypedef(t tast.Type) tast.Type {
+	for {
+		if td, ok := t.(*tast.TypedefType); ok {
+			t = td.Aliased
+		} else {
+			return t
+		}
+	}
 }

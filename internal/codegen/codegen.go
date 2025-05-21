@@ -18,6 +18,7 @@ type CodeGenerator struct {
 	ng          *NameGenerator
 	declTypes   map[string]struct{}
 	declGlobals map[string]struct{}
+	structs     map[string]*llvmgen.StructType
 }
 
 // NewCodeGenerator creates and returns a new CodeGenerator instance that writes
@@ -32,6 +33,7 @@ func NewCodeGenerator(w io.Writer) *CodeGenerator {
 		ng:          nameGen,
 		declTypes:   make(map[string]struct{}),
 		declGlobals: make(map[string]struct{}),
+		structs:     make(map[string]*llvmgen.StructType),
 	}
 }
 
@@ -79,12 +81,12 @@ func (cg *CodeGenerator) addGlobal(name string) bool {
 	return true
 }
 
-func (cg *CodeGenerator) emitTypeDecl(structType llvmgen.StructType) error {
+func (cg *CodeGenerator) emitTypeDecl(structType *llvmgen.StructType) error {
 	if _, ok := cg.declTypes[structType.Name]; ok {
 		return nil
 	}
 	cg.declTypes[structType.Name] = struct{}{}
-	cg.write.TypeDef(structType)
+	cg.write.StructType(structType)
 	return nil
 }
 

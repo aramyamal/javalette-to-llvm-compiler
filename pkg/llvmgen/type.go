@@ -139,7 +139,7 @@ type StructType struct {
 	Fields []Type
 }
 
-func TypeDef(name string, fields ...Type) *StructType {
+func StructDef(name string, fields ...Type) *StructType {
 	return &StructType{Name: name, Fields: fields}
 }
 

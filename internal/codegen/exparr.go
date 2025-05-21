@@ -20,7 +20,7 @@ func (cg *CodeGenerator) compileNewArrExp(
 		}
 		indices = append(indices, index)
 	}
-	arrStructType, ok := toLlvmType(e.Type()).(*llvmgen.StructType)
+	arrStructType, ok := cg.toLlvmType(e.Type()).(*llvmgen.StructType)
 	if !ok {
 		return nil, fmt.Errorf(
 			"internal compiler error in compileNewArrExp: "+
@@ -46,7 +46,7 @@ func (cg *CodeGenerator) compileArrIndexExp(
 	if err != nil {
 		return "", err
 	}
-	arrType := toLlvmType(e.Exp.Type())
+	arrType := cg.toLlvmType(e.Exp.Type())
 
 	elemPtr, elemType, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
 	if err != nil {
@@ -78,7 +78,7 @@ func (cg *CodeGenerator) compileArrIndexLExp(
 	if err != nil {
 		return "", err
 	}
-	arrType := toLlvmType(e.Exp.Type())
+	arrType := cg.toLlvmType(e.Exp.Type())
 
 	elemPtr, _, err := cg.emitArrElemPtr(arrPtr, arrType, e.IdxExps)
 	if err != nil {
@@ -135,7 +135,7 @@ func (cg *CodeGenerator) emitFieldPtr(
 			e.Line(), e.Col(), e.Text(),
 		)
 	}
-	llvmType := toLlvmType(fieldProv)
+	llvmType := cg.toLlvmType(fieldProv)
 	fieldInfo, ok := fieldProv.FieldInfo(e.Name)
 	if !ok {
 		return "", nil, fmt.Errorf(
@@ -143,7 +143,7 @@ func (cg *CodeGenerator) emitFieldPtr(
 			e.Name, e.Line(), e.Col(), e.Text(),
 		)
 	}
-	fieldType := toLlvmType(fieldInfo.Type)
+	fieldType := cg.toLlvmType(fieldInfo.Type)
 	fieldPtr := cg.ng.nextReg()
 	cg.write.GetElementPtr(
 		fieldPtr, llvmType, llvmType.Ptr(), basePtr,
@@ -161,7 +161,7 @@ func (cg *CodeGenerator) emitArrayTypeDecls(typ llvmgen.Type) error {
 		)
 	}
 
-	if err := cg.emitTypeDecl(*structType); err != nil {
+	if err := cg.emitTypeDecl(structType); err != nil {
 		return err
 	}
 	// if the second field is a pointer
@@ -179,13 +179,6 @@ func (cg *CodeGenerator) allocArray(
 	dims []llvmgen.Value,
 	level int,
 ) (llvmgen.Value, error) {
-
-	// declare @calloc if not already declared before
-	if err := cg.emitFuncDecl(
-		llvmgen.I8.Ptr(), "calloc", llvmgen.I64, llvmgen.I64,
-	); err != nil {
-		return nil, err
-	}
 
 	// emit the type declarations of the array wrappers if not already
 	// emitted before
@@ -303,7 +296,11 @@ func (cg *CodeGenerator) allocArray(
 
 		cond := cg.ng.nextReg()
 		cg.write.CmpLt(cond, llvmgen.I32, idxVal, dims[level])
-		cg.write.BrIf(llvmgen.I1, cond, loopBody, loopExit)
+		if err := cg.write.BrIf(
+			llvmgen.I1, cond, loopBody, loopExit,
+		); err != nil {
+			return nil, err
+		}
 
 		// loop body
 		cg.write.Block(loopBody)
@@ -372,6 +369,14 @@ func (cg *CodeGenerator) emitCalloc(
 	elemSize llvmgen.Value,
 	resultType llvmgen.Type,
 ) (llvmgen.Value, error) {
+
+	// declare @calloc if not already declared before
+	if err := cg.emitFuncDecl(
+		llvmgen.I8.Ptr(), "calloc", llvmgen.I64, llvmgen.I64,
+	); err != nil {
+		return nil, err
+	}
+
 	// allocate zero intialized memeory with calloc for the data
 	raw := cg.ng.nextReg()
 	cg.write.Call(
@@ -390,7 +395,7 @@ func (cg *CodeGenerator) emitCalloc(
 func (cg *CodeGenerator) emitUninitStruct(
 	typ tast.Type,
 ) (llvmgen.Value, error) {
-	llvmType := toLlvmType(typ)
+	llvmType := cg.toLlvmType(typ)
 
 	// handle array types
 	if llvmStructType, isStruct := llvmType.(*llvmgen.StructType); isStruct {

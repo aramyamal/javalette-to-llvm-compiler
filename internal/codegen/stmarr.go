@@ -17,7 +17,7 @@ func (cg *CodeGenerator) compileForEachStm(s *tast.ForEachStm) error {
 	}
 
 	// assert array struct type
-	structType, ok := toLlvmType(s.Exp.Type()).(*llvmgen.StructType)
+	structType, ok := cg.toLlvmType(s.Exp.Type()).(*llvmgen.StructType)
 	if !ok {
 		return fmt.Errorf(
 			"internal compiler error in compileForEachStm: "+
@@ -53,7 +53,7 @@ func (cg *CodeGenerator) compileForEachStm(s *tast.ForEachStm) error {
 	cg.write.Load(length, llvmgen.I32, llvmgen.I32.Ptr(), lengthPtr)
 
 	// declare/allocate variable
-	elemType := toLlvmType(s.Type)
+	elemType := cg.toLlvmType(s.Type)
 	// for arrays, the type is a pointer
 	if _, isArray := s.Type.(*tast.ArrayType); isArray {
 		elemType = elemType.Ptr()
@@ -86,7 +86,9 @@ func (cg *CodeGenerator) compileForEachStm(s *tast.ForEachStm) error {
 
 	cond := cg.ng.nextReg()
 	cg.write.CmpLt(cond, llvmgen.I32, idxVal, length)
-	cg.write.BrIf(llvmgen.I1, cond, loopBody, loopExit)
+	if err := cg.write.BrIf(llvmgen.I1, cond, loopBody, loopExit); err != nil {
+		return err
+	}
 
 	// loop body
 	cg.write.Block(loopBody)

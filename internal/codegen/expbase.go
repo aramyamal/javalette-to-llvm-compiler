@@ -30,7 +30,7 @@ func (cg *CodeGenerator) compileIdentExp(e *tast.IdentExp) (
 	if err != nil {
 		return nil, err
 	}
-	typ := toLlvmType(e.Type())
+	typ := cg.toLlvmType(e.Type())
 
 	if _, isStruct := typ.(*llvmgen.StructType); isStruct {
 		// for arrays and structs, load a pointer to them
@@ -70,14 +70,14 @@ func (cg *CodeGenerator) compileFuncExp(e *tast.FuncExp) (
 	}
 
 	des := cg.ng.nextReg()
-	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
+	cg.write.Call(des, cg.toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
 	return des, nil
 }
 
 func (cg *CodeGenerator) compileFuncLExp(e *tast.FuncExp) (
 	llvmgen.Reg, error,
 ) {
-	typ := toLlvmType(e.Type())
+	typ := cg.toLlvmType(e.Type())
 	if _, isFieldProvider := typ.(tast.FieldProvider); !isFieldProvider {
 		return "", fmt.Errorf(
 			"internal compiler error in compileFuncLExp: return type %s"+
@@ -93,7 +93,7 @@ func (cg *CodeGenerator) compileFuncLExp(e *tast.FuncExp) (
 	}
 
 	des := cg.ng.nextReg()
-	cg.write.Call(des, toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
+	cg.write.Call(des, cg.toLlvmRetType(e.Type()), llvmgen.Global(e.Id), args...)
 	return des, nil
 }
 
@@ -106,7 +106,7 @@ func (cg *CodeGenerator) emitFuncArgs(exps []tast.Exp) (
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, llvmgen.Arg(toLlvmRetType(exp.Type()), value))
+		args = append(args, llvmgen.Arg(cg.toLlvmRetType(exp.Type()), value))
 	}
 	return args, nil
 }
@@ -117,18 +117,24 @@ func (cg *CodeGenerator) compileNegExp(e *tast.NegExp) (llvmgen.Value, error) {
 		return nil, err
 	}
 	des := cg.ng.nextReg()
-	llvmType := toLlvmType(e.Type())
+	llvmType := cg.toLlvmType(e.Type())
 	switch llvmType {
 	case llvmgen.I32:
-		cg.write.Sub(des, llvmType, llvmgen.LitInt(0), value)
+		err = cg.write.Sub(des, llvmType, llvmgen.LitInt(0), value)
 	case llvmgen.Double:
-		cg.write.Sub(des, llvmType, llvmgen.LitDouble(0.0), value)
+		err = cg.write.Sub(des, llvmType, llvmgen.LitDouble(0.0), value)
 	default:
 		return nil, fmt.Errorf(
 			"internal compiler error: unable to negate expression "+
 				"during code generation at %d:%d near '%s'. "+
 				"This should have been caught during type checking.",
 			e.Line(), e.Col(), e.Text(),
+		)
+	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileNegExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
 		)
 	}
 	return des, nil
@@ -152,21 +158,27 @@ func (cg *CodeGenerator) compilePostExp(e *tast.PostExp) (
 		return nil, err
 	}
 	orig := cg.ng.nextReg()
-	typ := toLlvmType(e.Type())
+	typ := cg.toLlvmType(e.Type())
 	cg.write.Load(orig, typ, typ.Ptr(), ptrReg)
 	incrm := cg.ng.nextReg()
 
 	switch e.Op {
 	case tast.OpInc:
-		cg.write.Add(incrm, typ, orig, llvmgen.LitInt(1))
+		err = cg.write.Add(incrm, typ, orig, llvmgen.LitInt(1))
 	case tast.OpDec:
-		cg.write.Sub(incrm, typ, orig, llvmgen.LitInt(1))
+		err = cg.write.Sub(incrm, typ, orig, llvmgen.LitInt(1))
 	default:
 		return nil, fmt.Errorf(
 			"compilePostExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 
+	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compilePostExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
+		)
 	}
 	cg.write.Store(typ, incrm, typ.Ptr(), ptrReg)
 	return orig, nil
@@ -178,21 +190,27 @@ func (cg *CodeGenerator) compilePreExp(e *tast.PreExp) (llvmgen.Value, error) {
 		return nil, err
 	}
 	orig := cg.ng.nextReg()
-	typ := toLlvmType(e.Type())
+	typ := cg.toLlvmType(e.Type())
 	cg.write.Load(orig, typ, typ.Ptr(), ptrReg)
 	incrm := cg.ng.nextReg()
 
 	switch e.Op {
 	case tast.OpInc:
-		cg.write.Add(incrm, typ, orig, llvmgen.LitInt(1))
+		err = cg.write.Add(incrm, typ, orig, llvmgen.LitInt(1))
 	case tast.OpDec:
-		cg.write.Sub(incrm, typ, orig, llvmgen.LitInt(1))
+		err = cg.write.Sub(incrm, typ, orig, llvmgen.LitInt(1))
 	default:
 		return nil, fmt.Errorf(
 			"compileExp->PostExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 
+	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compilePreExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
+		)
 	}
 	cg.write.Store(typ, incrm, typ.Ptr(), ptrReg)
 	return incrm, nil
@@ -210,15 +228,21 @@ func (cg *CodeGenerator) compileMulExp(e *tast.MulExp) (llvmgen.Value, error) {
 	des := cg.ng.nextReg()
 	switch e.Op {
 	case tast.OpMul:
-		cg.write.Mul(des, toLlvmType(e.Type()), lhs, rhs)
+		err = cg.write.Mul(des, cg.toLlvmType(e.Type()), lhs, rhs)
 	case tast.OpDiv:
-		cg.write.Div(des, toLlvmType(e.Type()), lhs, rhs)
+		err = cg.write.Div(des, cg.toLlvmType(e.Type()), lhs, rhs)
 	case tast.OpMod:
-		cg.write.Rem(des, toLlvmType(e.Type()), lhs, rhs)
+		err = cg.write.Rem(des, cg.toLlvmType(e.Type()), lhs, rhs)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp->MulExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
+		)
+	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileMulExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
 		)
 	}
 	return des, nil
@@ -236,19 +260,27 @@ func (cg *CodeGenerator) compileAddExp(e *tast.AddExp) (llvmgen.Value, error) {
 	des := cg.ng.nextReg()
 	switch e.Op {
 	case tast.OpAdd:
-		cg.write.Add(des, toLlvmType(e.Type()), lhs, rhs)
+		err = cg.write.Add(des, cg.toLlvmType(e.Type()), lhs, rhs)
 	case tast.OpSub:
-		cg.write.Sub(des, toLlvmType(e.Type()), lhs, rhs)
+		err = cg.write.Sub(des, cg.toLlvmType(e.Type()), lhs, rhs)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp->AddExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileAddExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
+		)
+	}
 	return des, nil
 }
 
-func (cg *CodeGenerator) compileCmpExp(e *tast.CmpExp) (llvmgen.Value, error) {
+func (cg *CodeGenerator) compileCmpExp(
+	e *tast.CmpExp,
+) (llvmgen.Value, error) {
 	lhs, err := cg.compileExp(e.LeftExp)
 	if err != nil {
 		return nil, err
@@ -258,30 +290,38 @@ func (cg *CodeGenerator) compileCmpExp(e *tast.CmpExp) (llvmgen.Value, error) {
 		return nil, err
 	}
 	des := cg.ng.nextReg()
+	typ := cg.toLlvmType(e.LeftExp.Type())
+
 	switch e.Op {
 	case tast.OpLt:
-		cg.write.CmpLt(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpLt(des, typ, lhs, rhs)
 	case tast.OpGt:
-		cg.write.CmpGt(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpGt(des, typ, lhs, rhs)
 	case tast.OpLe:
-		cg.write.CmpLe(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpLe(des, typ, lhs, rhs)
 	case tast.OpGe:
-		cg.write.CmpGe(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpGe(des, typ, lhs, rhs)
 	case tast.OpEq:
-		cg.write.CmpEq(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpEq(des, typ, lhs, rhs)
 	case tast.OpNe:
-		cg.write.CmpNe(des, toLlvmType(e.LeftExp.Type()), lhs, rhs)
+		err = cg.write.CmpNe(des, typ, lhs, rhs)
 	default:
 		return nil, fmt.Errorf(
 			"compileExp->CmpExp: unhandled op type '%v' at %d:%d near '%s'",
 			e.Op.Name(), e.Line(), e.Col(), e.Text(),
 		)
 	}
+	if err != nil {
+		return nil, fmt.Errorf(
+			"internal compiler error in compileCmpExp: %w at %d:%d near %s",
+			err, e.Line(), e.Col(), e.Text(),
+		)
+	}
 	return des, nil
 }
 
 func (cg *CodeGenerator) compileAndExp(e *tast.AndExp) (llvmgen.Value, error) {
-	llvmType := toLlvmType(e.Type())
+	llvmType := cg.toLlvmType(e.Type())
 	lhs, err := cg.compileExp(e.LeftExp)
 	if err != nil {
 		return nil, err
@@ -290,7 +330,9 @@ func (cg *CodeGenerator) compileAndExp(e *tast.AndExp) (llvmgen.Value, error) {
 	evalLab := cg.ng.nextLab()
 	endLab := cg.ng.nextLab()
 
-	cg.write.BrIf(llvmType, lhs, evalLab, falseLab)
+	if err := cg.write.BrIf(llvmType, lhs, evalLab, falseLab); err != nil {
+		return nil, err
+	}
 
 	cg.write.Label(evalLab)
 	rhs, err := cg.compileExp(e.RightExp)
@@ -304,16 +346,18 @@ func (cg *CodeGenerator) compileAndExp(e *tast.AndExp) (llvmgen.Value, error) {
 
 	des := cg.ng.nextReg()
 	cg.write.Label(endLab)
-	cg.write.Phi(
+	if err := cg.write.Phi(
 		des, llvmType,
 		llvmgen.Phi(llvmgen.LitBool(false), falseLab),
 		llvmgen.Phi(rhs, evalLab),
-	)
+	); err != nil {
+		return nil, err
+	}
 	return des, nil
 }
 
 func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvmgen.Value, error) {
-	llvmType := toLlvmType(e.Type())
+	llvmType := cg.toLlvmType(e.Type())
 	lhs, err := cg.compileExp(e.LeftExp)
 	if err != nil {
 		return nil, err
@@ -322,7 +366,9 @@ func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvmgen.Value, error) {
 	evalLab := cg.ng.nextLab()
 	endLab := cg.ng.nextLab()
 
-	cg.write.BrIf(llvmType, lhs, trueLab, evalLab)
+	if err := cg.write.BrIf(llvmType, lhs, trueLab, evalLab); err != nil {
+		return nil, err
+	}
 
 	cg.write.Label(evalLab)
 	rhs, err := cg.compileExp(e.RightExp)
@@ -336,10 +382,12 @@ func (cg *CodeGenerator) compileOrExp(e *tast.OrExp) (llvmgen.Value, error) {
 
 	des := cg.ng.nextReg()
 	cg.write.Label(endLab)
-	cg.write.Phi(
+	if err := cg.write.Phi(
 		des, llvmType,
 		llvmgen.Phi(llvmgen.LitBool(true), trueLab), llvmgen.Phi(rhs, evalLab),
-	)
+	); err != nil {
+		return nil, err
+	}
 	return des, nil
 }
 
@@ -354,7 +402,7 @@ func (cg *CodeGenerator) compileAssignExp(
 	if err != nil {
 		return nil, err
 	}
-	typ := toLlvmRetType(e.Type())
+	typ := cg.toLlvmRetType(e.Type())
 	cg.write.Store(typ, value, typ.Ptr(), lhsPtr)
 	return value, nil
 }

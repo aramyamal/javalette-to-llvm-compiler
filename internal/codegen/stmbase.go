@@ -1,6 +1,8 @@
 package codegen
 
 import (
+	"fmt"
+
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
@@ -15,7 +17,7 @@ func (cg *CodeGenerator) compileExpStm(s *tast.ExpStm) error {
 func (cg *CodeGenerator) compileDeclsStm(s *tast.DeclsStm) error {
 	for _, item := range s.Items {
 		typ := item.Type()
-		llvmType := toLlvmType(typ)
+		llvmType := cg.toLlvmType(typ)
 
 		// for arrays, the type is a pointer
 		if _, isArray := item.Type().(*tast.ArrayType); isArray {
@@ -60,7 +62,13 @@ func (cg *CodeGenerator) compileReturnStm(s *tast.ReturnStm) error {
 		return err
 	}
 
-	cg.write.Ret(toLlvmRetType(s.Type), reg)
+	err = cg.write.Ret(cg.toLlvmRetType(s.Type), reg)
+	if err != nil {
+		return fmt.Errorf(
+			"internal compiler error in compileReturnStm: %w at %d:%d near %s",
+			err, s.Line(), s.Col(), s.Text(),
+		)
+	}
 	return nil
 }
 
@@ -74,8 +82,10 @@ func (cg *CodeGenerator) compileWhileStm(s *tast.WhileStm) error {
 	if err != nil {
 		return err
 	}
-	llvmType := toLlvmType(s.Exp.Type())
-	cg.write.BrIf(llvmType, des, bodyLab, endLab)
+	llvmType := cg.toLlvmType(s.Exp.Type())
+	if err := cg.write.BrIf(llvmType, des, bodyLab, endLab); err != nil {
+		return err
+	}
 
 	cg.write.Label(bodyLab)
 	if err := cg.compileStm(s.Stm); err != nil {
@@ -108,8 +118,10 @@ func (cg *CodeGenerator) compileIfStm(s *tast.IfStm) error {
 		return err
 	}
 
-	llvmType := toLlvmType(s.Exp.Type())
-	cg.write.BrIf(llvmType, cond, thenLabel, elseLabel)
+	llvmType := cg.toLlvmType(s.Exp.Type())
+	if err := cg.write.BrIf(llvmType, cond, thenLabel, elseLabel); err != nil {
+		return err
+	}
 
 	// then
 	cg.write.Label(thenLabel)
