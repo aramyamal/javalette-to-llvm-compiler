@@ -7,14 +7,13 @@ import (
 	"io"
 
 	"github.com/aramyamal/javalette-to-llvm-compiler/internal/tast"
-	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/env"
 	"github.com/aramyamal/javalette-to-llvm-compiler/pkg/llvmgen"
 )
 
 // CodeGenerator generates LLVM code from the typed abstract syntax tree (TAST)
 // of a Javalette program, as produced by typechk.TypeChecker.
 type CodeGenerator struct {
-	env         *env.Environment[llvmgen.Reg]
+	env         *CodegenEnv
 	write       *llvmgen.Writer
 	ng          *NameGenerator
 	declTypes   map[string]struct{}
@@ -24,7 +23,7 @@ type CodeGenerator struct {
 // NewCodeGenerator creates and returns a new CodeGenerator instance that writes
 // to w.
 func NewCodeGenerator(w io.Writer) *CodeGenerator {
-	env := env.NewEnvironment[llvmgen.Reg]()
+	env := NewCodegenEnv()
 	writer := llvmgen.NewWriter(w)
 	nameGen := NewNameGenerator()
 	return &CodeGenerator{
